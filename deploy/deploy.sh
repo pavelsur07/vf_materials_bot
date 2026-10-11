@@ -55,15 +55,15 @@ log "Applying migrations..."
 uv run alembic upgrade head
 
 log "Restarting service..."
-sudo systemctl restart "$SERVICE_NAME"
+sudo -n systemctl restart "$SERVICE_NAME"
 
 log "Waiting for service to start..."
 sleep 2
 
-if sudo systemctl is-active --quiet "$SERVICE_NAME"; then
+if sudo -n systemctl is-active --quiet "$SERVICE_NAME"; then
     log "SUCCESS: $SERVICE_NAME is active"
 else
     log "ERROR: $SERVICE_NAME failed to start"
-    sudo systemctl is-active "$SERVICE_NAME" || true
+    sudo -n systemctl is-active "$SERVICE_NAME" || true
     exit 1
 fi
