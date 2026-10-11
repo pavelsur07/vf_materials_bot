@@ -1,7 +1,8 @@
 # Ваш Финдир — Telegram-бот
 
 Чат-бот «Ваш Финдир»: ведёт пользователя по сценариям (меню, кнопки, диалоги)
-по финансовой тематике.
+по финансовой тематике. Проект развивается в сторону модульной архитектуры
+с ИИ-агентами, базой знаний и интеграциями с внешними сервисами.
 
 Стек: Python 3.12+, aiogram 3.x, SQLite (SQLAlchemy 2.x async + Alembic),
 uv, ruff, mypy, pytest. Правила разработки — в [AGENTS.md](AGENTS.md).
@@ -10,16 +11,25 @@ uv, ruff, mypy, pytest. Правила разработки — в [AGENTS.md](A
 
 ```
 bot/
-├── __main__.py      # точка входа: polling или webhook — по MODE из .env
-├── config.py        # настройки из .env (pydantic-settings)
-├── handlers/        # роутеры: один файл = один сценарий
-├── dialogs/         # тексты сообщений и FSM-состояния
-├── keyboards/       # клавиатуры, callback через CallbackData-фабрики
-├── services/        # бизнес-логика без aiogram-импортов
-├── db/              # модели, session factory, миграции Alembic
-└── middlewares/     # db-сессия в хэндлеры
-deploy/              # nginx-конфиг и systemd-юнит для прода
-tests/               # зеркалит структуру bot/
+├── __main__.py         # точка входа: polling или webhook — по MODE из .env
+├── core/               # конфиг, DI-контейнер, исключения
+│   ├── config.py
+│   ├── container.py
+│   └── exceptions.py
+├── modules/            # функциональные модули (mini-apps)
+│   └── onboarding/     # сценарий старта и проверки подписки
+├── agents/             # ИИ-агенты: интерфейс, регистр, оркестратор
+├── knowledge/          # база знаний (RAG)
+├── integrations/       # адаптеры для внешних API (Telegram, MOEX, ЦБ и др.)
+├── services/           # кросс-модульная бизнес-логика
+├── db/                 # модели, session factory, миграции Alembic
+├── handlers/           # сборщик роутеров + общие error handlers
+├── keyboards/          # общие клавиатуры (если появятся)
+├── dialogs/            # общие диалоги/тексты (если появятся)
+└── middlewares/        # db-сессия, DI
+
+deploy/                 # nginx-конфиг и systemd-юнит для прода
+tests/                  # зеркалит структуру bot/
 ```
 
 ## Быстрый старт (локально)
@@ -46,30 +56,110 @@ tests/               # зеркалит структуру bot/
 
 ```bash
 uv run ruff check --fix .
-uv run ruff format .
-uv run mypy bot/ tests/
+uv run ruff format --check
+uv run mypy bot/
 uv run pytest
 ```
 
-## Деплой (webhook на mybots.vashfindir.ru)
+## Деплой
 
-Бот будет доступен по адресу `https://mybots.vashfindir.ru/vashfindir`
-(путь настраивается через `WEBHOOK_PATH`).
+Сервер: `109.73.204.179`. Бот lives в `/opt/vf_materials_bot`.
 
-1. DNS: A-запись `mybots.vashfindir.ru` → IP сервера.
-2. SSL-сертификат (Telegram шлёт webhook только на HTTPS), например через
-   certbot. Прописать пути к сертификату в `deploy/nginx-mybot.conf`.
-3. Подключить `deploy/nginx-mybot.conf` в nginx (проксирует `/vashfindir`
-   на `127.0.0.1:8081`) и перезагрузить nginx.
-4. В `.env` на сервере:
-   ```
-   MODE=webhook
-   WEBHOOK_SECRET=<случайная строка: openssl rand -hex 32>
-   BOT_TOKEN=<токен>
-   ```
-5. Запуск как сервис: скопировать `deploy/vf-materials-bot.service` в
-   `/etc/systemd/system/`, поправить пути, затем
-   `systemctl enable --now vf-materials-bot`.
+### Что обновляется автоматически, а что вручную
+
+- **Код** — автоматически. При пуше в `main` GitHub Actions запускает
+  `deploy/deploy.sh` на сервере.
+- **`.env`** — только вручную. `.env` не в репозитории, секреты не попадают в
+  GitHub. Обновляй через `deploy/update-env.sh`.
+
+### Первичная настройка сервера (один раз)
+
+Запусти на локальной машине:
+
+```bash
+deploy/setup-from-local.sh
+```
+
+Скрипт спросит пароль root, настроит `deploy_user`, sudoers, склонирует репо,
+установит зависимости, применит миграции и настроит systemd.
+
+После этого скопируй `.env`:
+
+```bash
+deploy/update-env.sh
+```
+
+### Обновить `.env` на сервере
+
+```bash
+deploy/update-env.sh
+```
+
+Это копирует локальный `.env` на сервер и перезапускает сервис.
+
+### Обновить код на сервере
+
+Просто запушь в `main`:
+
+```bash
+git push origin main
+```
+
+GitHub Actions сам выполнит `git pull`, `uv sync`, миграции и перезапустит
+сервис. Статус деплоя смотри во вкладке **Actions** репозитория.
+
+Если хочешь обновить код вручную на сервере:
+
+```bash
+ssh -i ~/.ssh/vf_materials_bot_deploy deploy_user@109.73.204.179
+sudo deploy/deploy.sh
+```
+
+### Проверить статус и логи
+
+```bash
+ssh -i ~/.ssh/vf_materials_bot_deploy deploy_user@109.73.204.179 'sudo systemctl is-active vf-materials-bot'
+ssh -i ~/.ssh/vf_materials_bot_deploy deploy_user@109.73.204.179 'sudo journalctl -u vf-materials-bot -n 50 --no-pager'
+```
+
+### Настройка GitHub Actions
+
+В репозитории → Settings → Secrets and variables → Actions добавь:
+
+- `SSH_HOST` — `109.73.204.179`
+- `SSH_USER` — `deploy_user`
+- `SSH_PRIVATE_KEY` — приватный ключ `~/.ssh/vf_materials_bot_deploy`
+- `SSH_PORT` — `22` (опционально)
+
+Публичный ключ уже должен лежать в `~deploy_user/.ssh/authorized_keys` на
+сервере (это делает `setup-from-local.sh`).
+
+### Webhook
+
+Для продакшена в `.env` на сервере должен быть:
+
+```
+MODE=webhook
+WEBHOOK_HOST=https://mybots.vashfindir.ru
+WEBHOOK_PATH=/vashfindir
+WEBHOOK_SECRET=<случайная строка>
+```
+
+Nginx проксирует `https://mybots.vashfindir.ru/vashfindir` на
+`127.0.0.1:8081`. Конфиг: `deploy/nginx-mybot.conf`.
+
+## Мониторинг ошибок (GlitchTip / Sentry)
+
+Бот отправляет необработанные исключения в GlitchTip через `sentry-sdk`.
+Чтобы включить, добавь в `.env`:
+
+```
+GLITCHTIP_DSN=https://xxxx@glitchtip.example.com/1
+GLITCHTIP_ENVIRONMENT=production
+GLITCHTIP_TRACES_SAMPLE_RATE=0.0
+```
+
+Если `GLITCHTIP_DSN` пустой, отправка ошибок отключается.
 
 ## Полезные команды
 

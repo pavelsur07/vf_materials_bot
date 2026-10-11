@@ -10,6 +10,7 @@ dependencies = [
     "sqlalchemy[asyncio]>=2.0",
     "alembic>=1.13",
     "pydantic-settings>=2.5",
+    "sentry-sdk>=2.0",
 ]
 
 [dependency-groups]
@@ -34,7 +35,7 @@ strict = true
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
-module = ["aiosqlite.*"]
+module = ["aiosqlite.*", "sentry_sdk.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

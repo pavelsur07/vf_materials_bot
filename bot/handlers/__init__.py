@@ -1,7 +1,8 @@
 from aiogram import Router
 
-from bot.handlers import errors, start
+from bot.handlers import errors
+from bot.modules import onboarding
 
 
 def get_routers() -> list[Router]:
-    return [start.router, errors.router]
+    return [onboarding.router, errors.router]

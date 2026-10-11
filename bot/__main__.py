@@ -8,17 +8,36 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 from aiohttp import web
 
-from bot.config import get_settings
+from bot.core.config import get_settings
+from bot.core.container import Container
+from bot.core.glitchtip import init_glitchtip
 from bot.db.session import create_session_factory
 from bot.handlers import get_routers
+from bot.integrations.telegram import TelegramChannelAdapter
 from bot.middlewares.db import DbSessionMiddleware
+from bot.middlewares.di import DiMiddleware
+from bot.modules.onboarding.use_cases import OnboardingUseCase
 
 logger = logging.getLogger(__name__)
 
 
-def build_dispatcher() -> Dispatcher:
+def _build_container(bot: Bot) -> Container:
+    settings = get_settings()
+    container = Container()
+    telegram_adapter = TelegramChannelAdapter(bot)
+    container.register(TelegramChannelAdapter, telegram_adapter)
+    container.register(
+        OnboardingUseCase,
+        OnboardingUseCase(settings, telegram_adapter),
+    )
+    return container
+
+
+def build_dispatcher(bot: Bot) -> Dispatcher:
     dp = Dispatcher(storage=MemoryStorage())
+    container = _build_container(bot)
     dp.update.middleware(DbSessionMiddleware(create_session_factory()))
+    dp.update.middleware(DiMiddleware(container.resolve(OnboardingUseCase)))
     for router in get_routers():
         dp.include_router(router)
     return dp
@@ -55,10 +74,11 @@ def main() -> None:
         level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
     )
     settings = get_settings()
+    init_glitchtip(settings)
     if not settings.bot_token:
         raise SystemExit("BOT_TOKEN не задан. Скопируйте .env.example в .env и впишите токен.")
     bot = Bot(settings.bot_token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
-    dp = build_dispatcher()
+    dp = build_dispatcher(bot)
     if settings.mode == "webhook":
         run_webhook(bot, dp)
     else:
