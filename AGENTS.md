@@ -16,6 +16,8 @@
 - ruff — линтер и форматтер, mypy — строгая типизация
 - pytest + pytest-asyncio — тесты
 - sentry-sdk — отправка ошибок в GlitchTip/Sentry
+- FastAPI + uvicorn + Jinja2 — веб-админка (`bot/admin/`, отдельный процесс)
+- bcrypt + itsdangerous — авторизация в админке (хэш пароля, подписанная сессия)
 
 ## Структура проекта
 
@@ -33,6 +35,12 @@ vf_materials_bot/
 │   │   ├── models.py
 │   │   ├── session.py
 │   │   └── migrations/
+│   ├── admin/              # веб-админ-панель (FastAPI): отдельный процесс,
+│   │                       # удаляемый островок; роуты — тонкие адаптеры,
+│   │                       # бизнес-логика — в services/
+│   │   ├── app.py          # фабрика FastAPI-приложения
+│   │   ├── auth.py         # авторизация, CSRF, AuthMiddleware
+│   │   └── routes/         # страницы (login, dashboard)
 │   ├── modules/            # функциональные модули (mini-apps)
 │   │   └── onboarding/     # пример: старт и проверка подписки
 │   │       ├── handlers.py
@@ -61,7 +69,8 @@ vf_materials_bot/
    handlers → use_cases → services → agents/knowledge/integrations → db/external API
    ```
    Обратных и поперечных импортов нет. `services`, `db`, `agents`, `knowledge`,
-   `integrations` не импортируют aiogram — их можно тестировать без Telegram.
+   `integrations` не импортируют aiogram и fastapi — их можно тестировать
+   без Telegram и без веб-сервера.
 
 2. **Хэндлер — тонкий**: принять update, вызвать use case, ответить. Никакой
    логики, SQL и f-строк с бизнес-правилами в хэндлерах.

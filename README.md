@@ -11,11 +11,12 @@ uv, ruff, mypy, pytest. Правила разработки — в [AGENTS.md](A
 
 ```
 bot/
-├── __main__.py         # точка входа: polling или webhook — по MODE из .env
+├── __main__.py         # точка входа бота: polling или webhook — по MODE из .env
 ├── core/               # конфиг, DI-контейнер, исключения
 │   ├── config.py
 │   ├── container.py
 │   └── exceptions.py
+├── admin/              # веб-админ-панель (FastAPI), отдельный процесс: python -m bot.admin
 ├── modules/            # функциональные модули (mini-apps)
 │   └── onboarding/     # сценарий старта и проверки подписки
 ├── agents/             # ИИ-агенты: интерфейс, регистр, оркестратор
@@ -51,6 +52,35 @@ tests/                  # зеркалит структуру bot/
    ```bash
    uv run python -m bot
    ```
+
+## Веб-админка
+
+Минимальная админ-панель на FastAPI живёт в `bot/admin/` и запускается отдельным
+процессом (`python -m bot.admin`). Авторизация — логин/пароль (bcrypt-хэш в `.env`),
+сессия — подписанная кука, на формах — CSRF-токен.
+
+1. В `.env` задать:
+   ```bash
+   deploy/admin-password.sh   # спросит пароль и сам запишет ADMIN_PASSWORD_HASH в .env
+   ```
+   и вписать (один раз):
+   ```bash
+   ADMIN_SECRET_KEY=$(openssl rand -hex 32)
+   ADMIN_USERNAME=admin
+   ```
+   Альтернатива без обновления `.env`: `uv run python -m bot.admin.hashpw`
+   (интерактивно или `printf '%s' 'пароль' | uv run python -m bot.admin.hashpw`).
+2. Локально: `uv run python -m bot.admin` → http://127.0.0.1:8082/admin/
+3. На сервере (первый раз): скопировать юнит и включить сервис, обновить nginx:
+   ```bash
+   sudo cp deploy/vf-materials-bot-admin.service /etc/systemd/system/
+   sudo systemctl daemon-reload && sudo systemctl enable --now vf-materials-bot-admin
+   ```
+   Nginx проксирует `/admin/` → `127.0.0.1:8082` (см. `deploy/nginx-mybot.conf`).
+   Дальше `deploy/deploy.sh` перезапускает оба сервиса автоматически.
+
+Админка — самодостаточный островок: роуты тонкие, логика в `bot/services/`.
+Удаление `bot/admin/` + юнита + блока nginx возвращает проект в исходное состояние.
 
 ## Проверки перед коммитом
 

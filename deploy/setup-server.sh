@@ -5,6 +5,7 @@ set -euo pipefail
 # clone the project, install dependencies, apply migrations and start the service.
 
 SERVICE_NAME="vf-materials-bot"
+ADMIN_SERVICE_NAME="vf-materials-bot-admin"
 WORK_DIR="/opt/vf_materials_bot"
 REPO_URL="${1:-}"
 
@@ -25,6 +26,9 @@ rm -f /etc/sudoers.d/vf-materials-bot-deploy
     echo "deploy_user ALL=(ALL) NOPASSWD: /bin/systemctl restart ${SERVICE_NAME}"
     echo "deploy_user ALL=(ALL) NOPASSWD: /bin/systemctl status ${SERVICE_NAME}"
     echo "deploy_user ALL=(ALL) NOPASSWD: /bin/systemctl is-active ${SERVICE_NAME}"
+    echo "deploy_user ALL=(ALL) NOPASSWD: /bin/systemctl restart ${ADMIN_SERVICE_NAME}"
+    echo "deploy_user ALL=(ALL) NOPASSWD: /bin/systemctl status ${ADMIN_SERVICE_NAME}"
+    echo "deploy_user ALL=(ALL) NOPASSWD: /bin/systemctl is-active ${ADMIN_SERVICE_NAME}"
 } > /etc/sudoers.d/vf-materials-bot-deploy
 chmod 440 /etc/sudoers.d/vf-materials-bot-deploy
 visudo -c
@@ -53,10 +57,13 @@ uv sync
 echo "==> Applying migrations..."
 uv run alembic upgrade head
 
-echo "==> Setting up systemd service..."
+echo "==> Setting up systemd services..."
 cp "deploy/vf-materials-bot.service" /etc/systemd/system/
+cp "deploy/vf-materials-bot-admin.service" /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable "$SERVICE_NAME"
+# Админка стартует вручную/автодеплоем после появления ADMIN_* в .env.
+systemctl enable "$ADMIN_SERVICE_NAME"
 
 echo ""
 echo "==> Setup complete."

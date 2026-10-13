@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Админка «Ваш Финдир»{% endblock %}</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 900px; margin: 2rem auto;
+           padding: 0 1rem; color: #222; }
+    header { display: flex; justify-content: space-between; align-items: center;
+             margin-bottom: 2rem; border-bottom: 1px solid #ddd; padding-bottom: 0.75rem; }
+    form.inline { display: inline; }
+    label { display: block; margin-bottom: 0.75rem; }
+    input { padding: 0.4rem; }
+    button { padding: 0.4rem 1rem; cursor: pointer; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { text-align: left; padding: 0.4rem 0.6rem; border-bottom: 1px solid #eee; }
+    .error { color: #b00020; }
+  </style>
+</head>
+<body>
+  <header>
+    <strong>«Ваш Финдир» — админка</strong>
+    {% if request.session.get('admin_user') %}
+    <form class="inline" method="post" action="/admin/logout">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button type="submit">Выйти</button>
+    </form>
+    {% endif %}
+  </header>
+  {% block content %}{% endblock %}
+</body>
+</html>

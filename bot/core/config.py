@@ -21,6 +21,12 @@ class Settings(BaseSettings):
     webapp_host: str = "127.0.0.1"
     webapp_port: int = 8081
 
+    admin_host: str = "127.0.0.1"
+    admin_port: int = 8082
+    admin_secret_key: str = ""
+    admin_username: str = "admin"
+    admin_password_hash: str = ""
+
     database_url: str = "sqlite+aiosqlite:///./vf_materials_bot.db"
 
     glitchtip_dsn: str = ""

@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Пользователи</h1>
+<p>Всего: {{ total_users }}</p>
+<table>
+  <thead>
+    <tr><th>Telegram ID</th><th>Username</th><th>Имя</th><th>Дата регистрации</th></tr>
+  </thead>
+  <tbody>
+    {% for user in users %}
+    <tr>
+      <td>{{ user.tg_id }}</td>
+      <td>{{ user.username or '—' }}</td>
+      <td>{{ user.first_name or '—' }}</td>
+      <td>{{ user.created_at.strftime('%Y-%m-%d %H:%M') if user.created_at else '—' }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

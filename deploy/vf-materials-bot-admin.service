@@ -1,0 +1,15 @@
+# /etc/systemd/system/vf-materials-bot-admin.service
+[Unit]
+Description=Vash Findir admin panel
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/vf_materials_bot
+EnvironmentFile=/opt/vf_materials_bot/.env
+ExecStart=/opt/vf_materials_bot/.venv/bin/python -m bot.admin
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
