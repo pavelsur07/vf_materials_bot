@@ -48,7 +48,7 @@ if [[ ! -f ".env" ]]; then
 fi
 
 log "Pulling latest changes..."
-git pull --ff-only origin main
+git pull --ff-only origin "$(git branch --show-current)"
 
 log "Syncing dependencies..."
 uv sync
