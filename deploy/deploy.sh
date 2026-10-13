@@ -8,6 +8,9 @@ SERVICE_NAME="vf-materials-bot"
 ADMIN_SERVICE_NAME="vf-materials-bot-admin"
 WORK_DIR="/opt/vf_materials_bot"
 
+# sudo сбрасывает PATH до secure_path, где нет uv: добавляем известные места установки.
+export PATH="$PATH:/home/deploy_user/.local/bin:$HOME/.local/bin"
+
 log() {
     echo "[$(date +'%Y-%m-%d %H:%M:%S')] $*"
 }
