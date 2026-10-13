@@ -6,9 +6,27 @@
   <title>{% block title %}Админка «Ваш Финдир»{% endblock %}</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
   <style>
+    /* Компактная плотность админки: база 14px, без роста шрифта на широких экранах */
+    html:root {
+      --pico-font-size: 87.5%;
+      --pico-line-height: 1.45;
+      --pico-spacing: 0.625rem;
+      --pico-form-element-spacing-vertical: 0.35rem;
+      --pico-form-element-spacing-horizontal: 0.7rem;
+      --pico-border-radius: 0.2rem;
+    }
+    h1 { --pico-font-size: 1.5rem; }
+    h2 { --pico-font-size: 1.25rem; }
+
+    body > header { padding-block: 0.75rem; }
+
+    /* Таблицы — плотные, числа моноширинной ширины (tabular-nums) */
+    table { font-variant-numeric: tabular-nums; }
+    th, td { padding: 0.3rem 0.6rem; }
+
     /* Pico не выравнивает формы по центру — компактная карточка для входа */
-    .login-box { max-width: 380px; margin: 10vh auto 0; }
-    .login-box h1 { margin-bottom: 1.5rem; text-align: center; }
+    .login-box { max-width: 340px; margin: 8vh auto 0; }
+    .login-box h1 { margin-bottom: 1rem; text-align: center; }
     .login-box button[type="submit"] { width: 100%; }
     .error { color: #b00020; }
   </style>
