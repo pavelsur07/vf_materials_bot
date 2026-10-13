@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -42,6 +42,12 @@ class Settings(BaseSettings):
     @property
     def webhook_url(self) -> str:
         return f"{self.webhook_host.rstrip('/')}{self.webhook_path}"
+
+    @field_validator("leads_chat_id", "leads_topic_id", mode="before")
+    @classmethod
+    def _blank_int_to_zero(cls, value: object) -> object:
+        # Пустая строка в .env (= «не задано») означает 0, а не ошибку парсинга int
+        return 0 if value == "" else value
 
 
 def get_settings() -> Settings:
