@@ -14,6 +14,12 @@ class Settings(BaseSettings):
     channel_url: str = Field(default="", alias="TELEGRAM_CHANNEL_URL")
     leadmagnet_url: str = ""
 
+    # Релей уведомлений о лидах: сайт на RU-хостинге не достаёт до api.telegram.org
+    # (блокировка), поэтому шлёт готовый текст сюда, а бот пересылает его в Telegram.
+    lead_api_token: str = ""
+    leads_chat_id: int = 0
+    leads_topic_id: int = 0
+
     webhook_host: str = "https://mybots.vashfindir.ru"
     webhook_path: str = "/vashfindir"
     webhook_secret: str = ""

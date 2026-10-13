@@ -17,4 +17,13 @@
     {% endfor %}
   </tbody>
 </table>
+
+<h2>Уведомления о лидах</h2>
+{% if lead_test_message %}
+<p class="{{ 'ok' if lead_test_ok else 'error' }}">{{ lead_test_message }}</p>
+{% endif %}
+<form method="post" action="/admin/leads/test" style="margin: 0;">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <button type="submit">Отправить тестовое сообщение в группу</button>
+</form>
 {% endblock %}

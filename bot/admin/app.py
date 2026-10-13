@@ -7,8 +7,9 @@ from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import PlainTextResponse
 
 from bot.admin.auth import AuthMiddleware
-from bot.admin.routes import auth_pages, pages
+from bot.admin.routes import auth_pages, leads, pages
 from bot.core.config import Settings
+from bot.modules.leads.use_cases import NotifyLeadUseCase
 
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 
@@ -16,11 +17,13 @@ TEMPLATES_DIR = Path(__file__).parent / "templates"
 def create_admin_app(
     settings: Settings,
     session_factory: async_sessionmaker[AsyncSession],
+    lead_notify_use_case: NotifyLeadUseCase | None = None,
 ) -> FastAPI:
     app = FastAPI(title="VF Admin", docs_url=None, redoc_url=None, openapi_url=None)
     app.state.settings = settings
     app.state.session_factory = session_factory
     app.state.templates = Jinja2Templates(directory=TEMPLATES_DIR)
+    app.state.lead_notify_use_case = lead_notify_use_case
 
     # Starlette runs the last added middleware first, so SessionMiddleware
     # wraps AuthMiddleware and request.session is already populated there.
@@ -34,6 +37,7 @@ def create_admin_app(
 
     app.include_router(auth_pages.router)
     app.include_router(pages.router)
+    app.include_router(leads.router)
 
     @app.get("/admin/health")
     async def health() -> PlainTextResponse:

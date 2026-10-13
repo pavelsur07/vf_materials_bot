@@ -12,7 +12,8 @@ SESSION_USER_KEY = "admin_user"
 CSRF_SESSION_KEY = "csrf_token"
 LOGIN_PATH = "/admin/login"
 HEALTH_PATH = "/admin/health"
-PUBLIC_PATHS = {LOGIN_PATH, HEALTH_PATH}
+LEADS_PATH = "/api/leads"
+PUBLIC_PATHS = {LOGIN_PATH, HEALTH_PATH, LEADS_PATH}
 
 
 def hash_password(plain: str) -> str:
