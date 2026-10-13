@@ -1,33 +1,30 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" data-theme="light">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Админка «Ваш Финдир»{% endblock %}</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
   <style>
-    body { font-family: system-ui, sans-serif; max-width: 900px; margin: 2rem auto;
-           padding: 0 1rem; color: #222; }
-    header { display: flex; justify-content: space-between; align-items: center;
-             margin-bottom: 2rem; border-bottom: 1px solid #ddd; padding-bottom: 0.75rem; }
-    form.inline { display: inline; }
-    label { display: block; margin-bottom: 0.75rem; }
-    input { padding: 0.4rem; }
-    button { padding: 0.4rem 1rem; cursor: pointer; }
-    table { border-collapse: collapse; width: 100%; }
-    th, td { text-align: left; padding: 0.4rem 0.6rem; border-bottom: 1px solid #eee; }
+    /* Pico не выравнивает формы по центру — компактная карточка для входа */
+    .login-box { max-width: 380px; margin: 10vh auto 0; }
+    .login-box h1 { margin-bottom: 1.5rem; text-align: center; }
+    .login-box button[type="submit"] { width: 100%; }
     .error { color: #b00020; }
   </style>
 </head>
 <body>
-  <header>
+  <header class="container">
     <strong>«Ваш Финдир» — админка</strong>
     {% if request.session.get('admin_user') %}
-    <form class="inline" method="post" action="/admin/logout">
+    <form class="inline" method="post" action="/admin/logout" style="display: inline; margin: 0;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-      <button type="submit">Выйти</button>
+      <button type="submit" class="secondary" style="margin: 0;">Выйти</button>
     </form>
     {% endif %}
   </header>
-  {% block content %}{% endblock %}
+  <main class="container">
+    {% block content %}{% endblock %}
+  </main>
 </body>
 </html>
