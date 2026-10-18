@@ -78,7 +78,14 @@ if [[ ! -f ".env" ]]; then
 fi
 
 log "Pulling latest changes..."
+head_before="$(git rev-parse HEAD)"
 git pull --ff-only origin "$(git branch --show-current)"
+if [[ "$(git rev-parse HEAD)" != "$head_before" ]]; then
+    # Код обновился — продолжаем деплой скриптом из новой ревизии. Иначе bash
+    # продолжил бы выполнять уже перезаписанный git pull'ом старый файл.
+    log "Code updated, re-running deploy from the new revision..."
+    exec bash "$0" "$@"
+fi
 
 # --- Инфраструктура из репозитория -------------------------------------------------
 
