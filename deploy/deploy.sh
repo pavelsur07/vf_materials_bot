@@ -7,6 +7,7 @@ set -euo pipefail
 SERVICE_NAME="vf-materials-bot"
 ADMIN_SERVICE_NAME="vf-materials-bot-admin"
 API_SERVICE_NAME="vf-materials-api"
+WORKER_SERVICE_NAME="vf-materials-worker"
 WORK_DIR="/opt/vf_materials_bot"
 
 # sudo сбрасывает PATH до secure_path, где нет uv: добавляем известные места установки.
@@ -25,7 +26,8 @@ Deploys the latest main branch to production:
   2. uv sync
   3. alembic upgrade head
   4. systemctl restart vf-materials-bot
-     (+ vf-materials-bot-admin при ADMIN_SECRET_KEY, + vf-materials-api при API_TOKEN/LEAD_API_TOKEN)
+     (+ vf-materials-bot-admin при ADMIN_SECRET_KEY, + vf-materials-api при API_TOKEN/LEAD_API_TOKEN,
+      + vf-materials-worker при WORKER_ENABLED=true)
 
 Requires:
   - repository cloned to $WORK_DIR
@@ -72,6 +74,12 @@ if grep -qE '^(API_TOKEN|LEAD_API_TOKEN)=.+' .env; then
     SERVICES+=("$API_SERVICE_NAME")
 else
     log "WARNING: neither API_TOKEN nor LEAD_API_TOKEN is set in .env, skipping $API_SERVICE_NAME"
+fi
+
+if grep -qE '^WORKER_ENABLED=true' .env; then
+    SERVICES+=("$WORKER_SERVICE_NAME")
+else
+    log "WARNING: WORKER_ENABLED is not set to true in .env, skipping $WORKER_SERVICE_NAME"
 fi
 
 for service in "${SERVICES[@]}"; do

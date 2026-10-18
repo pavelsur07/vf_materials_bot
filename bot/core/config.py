@@ -38,6 +38,9 @@ class Settings(BaseSettings):
     api_port: int = 8083
     api_token: str = ""
 
+    # Фоновый воркер (python -m bot.worker): забирает задачи из очереди jobs
+    worker_enabled: bool = False
+
     database_url: str = "sqlite+aiosqlite:///./vf_materials_bot.db"
 
     glitchtip_dsn: str = ""
