@@ -1,8 +1,10 @@
 # AGENTS.md — «Ваш Финдир»
 
-Чат-бот «Ваш Финдир» — Telegram-бот на Python, ведущий пользователя по сценариям
-(меню, кнопки, диалоги) по финансовой тематике. Проект развивается в сторону
-модульной архитектуры с ИИ-агентами, базой знаний и внешними интеграциями.
+Платформа «Ваш Финдир» — набор сервисов для бизнеса на Python: Telegram-бот,
+публичное API для интеграций, веб-админка и фоновый воркер. Сервисы живут в
+одном репозитории и развёртке: общий конфиг `.env`, общая SQLite (WAL) и единый
+автодеплой. Telegram-бот — один из каналов доставки, а не монолит, вокруг
+которого всё строится.
 
 Этот файл — обязательные правила для человека и ИИ-агента. Он короче ума:
 когда правило мешает, сначала обнови этот файл, потом код — а не наоборот.
@@ -11,12 +13,14 @@
 
 - Python 3.12+, asyncio
 - aiogram 3.x (Router, F-фильтры, FSM для диалогов)
-- SQLite через SQLAlchemy 2.x (async) + Alembic для миграций
+- SQLite через SQLAlchemy 2.x (async) + Alembic для миграций (одна БД на все
+  процессы, WAL + busy_timeout включаются в `bot/db/session.py`)
 - uv — управление зависимостями и окружением (никакого pip/poetry)
 - ruff — линтер и форматтер, mypy — строгая типизация
 - pytest + pytest-asyncio — тесты
 - sentry-sdk — отправка ошибок в GlitchTip/Sentry
-- FastAPI + uvicorn + Jinja2 — веб-админка (`bot/admin/`, отдельный процесс)
+- FastAPI + uvicorn + Jinja2 — веб-сервисы (`bot/admin/`, `bot/api/`,
+  отдельные процессы)
 - bcrypt + itsdangerous — авторизация в админке (хэш пароля, подписанная сессия)
 
 ## Структура проекта
@@ -41,6 +45,14 @@ vf_materials_bot/
 │   │   ├── app.py          # фабрика FastAPI-приложения
 │   │   ├── auth.py         # авторизация, CSRF, AuthMiddleware
 │   │   └── routes/         # страницы (login, dashboard)
+│   ├── api/                # публичное API для бизнес-интеграций (FastAPI):
+│   │                       # отдельный процесс, токен-аутентификация, без сессий
+│   │   ├── app.py          # фабрика FastAPI-приложения
+│   │   ├── auth.py         # проверка токена (x-api-token / legacy x-lead-token)
+│   │   └── routes/         # машинные endpoint'ы (/api/leads)
+│   ├── worker/             # фоновый воркер: забирает задачи из очереди jobs
+│   │   ├── __main__.py     # цикл поллинга очереди, остановка по SIGTERM
+│   │   └── handlers.py     # реестр обработчиков задач
 │   ├── modules/            # функциональные модули (mini-apps)
 │   │   └── onboarding/     # пример: старт и проверка подписки
 │   │       ├── handlers.py
@@ -61,6 +73,27 @@ vf_materials_bot/
 
 Новый код кладётся строго по слою. Если непонятно куда — значит, это `services/`,
 а импорты aiogram в нём — признак ошибки проектирования.
+
+## Сервисы (процессы)
+
+Сервис = `python -m bot.<name>` = systemd-юнит `vf-materials-<name>`. Все сервисы
+читают один `.env`, ходят в одну SQLite и используют общие слои (`core`, `db`,
+`services`, `integrations`, `agents`, `knowledge`). Схема БД единая, владелец —
+Alembic: миграцию генерируем локально и коммитим, применяет `deploy/deploy.sh`
+один раз до перезапуска сервисов.
+
+| Сервис | Модуль      | Порт | Включается в деплое              |
+|--------|-------------|------|----------------------------------|
+| bot    | `bot`       | 8081 | всегда                           |
+| admin  | `bot.admin` | 8082 | `ADMIN_SECRET_KEY` в .env        |
+| api    | `bot.api`   | 8083 | `API_TOKEN` или `LEAD_API_TOKEN` |
+| worker | `bot.worker`| —    | `WORKER_ENABLED=true`            |
+
+Nginx снаружи (`deploy/nginx-mybot.conf`): `/vashfindir` → bot, `/admin/` →
+admin, `/api/` → api. Очередь фоновых задач — таблица `jobs` в общей БД:
+кладут через `bot/services/jobs.py`, выполняет worker по реестру из
+`bot/worker/handlers.py`. Точка роста: при втором хосте или росте нагрузки —
+Postgres вместо SQLite и брокер очередей вместо таблицы `jobs`.
 
 ## Архитектурные правила (не превращаемся в кашу)
 
@@ -96,8 +129,9 @@ vf_materials_bot/
    `.env.example`).
 
 9. **БД — только через миграции Alembic**. Руками схему не правим; изменил
-   модель — сгенерируй миграцию. Сессия пробрасывается через middleware,
-   не создаётся в хэндлерах.
+   модель — сгенерируй миграцию. Схема одна на все сервисы, применяет её
+   `deploy/deploy.sh` до перезапуска. Сессия пробрасывается через middleware/
+   фабрику, не создаётся в хэндлерах.
 
 10. **Внешние API — только через адаптеры в `integrations/`**. Адаптер изолирует
     детали HTTP/Telegram от бизнес-логики. В use cases используем адаптер, а не
@@ -119,6 +153,12 @@ vf_materials_bot/
 15. **Логирование — `logging` (или loguru, если добавлен в зависимости),
     никаких `print`**. Логируем события, не токены и не персональные данные.
 
+16. **Новый сервис — по образцу `bot/api/`**: пакет `bot/<name>/` с `__main__.py`
+    (config → glitchtip → session factory → uvicorn/цикл), фабрика приложения,
+    healthcheck для HTTP, systemd-юнит в `deploy/`, включение в `deploy.sh`
+    по флагу в `.env`, строки в `.env.example`. Машинные endpoint'ы —
+    только в `bot/api/`, не в админке.
+
 ## Стиль кода
 
 - Типы обязательны: все публичные функции аннотированы, mypy проходит без ошибок.
@@ -137,6 +177,9 @@ vf_materials_bot/
 ```bash
 uv sync                      # установить зависимости
 uv run python -m bot         # запустить бота (polling/webhook — по MODE из .env)
+uv run python -m bot.admin   # запустить админку (нужен ADMIN_SECRET_KEY)
+uv run python -m bot.api     # запустить API (нужен API_TOKEN/LEAD_API_TOKEN)
+uv run python -m bot.worker  # запустить воркер (нужен WORKER_ENABLED=true)
 uv run ruff check --fix .    # линт
 uv run ruff format .         # форматирование
 uv run mypy bot/             # типы
@@ -180,6 +223,15 @@ uv run alembic upgrade head                       # применить мигр�
 4. Если нужен внешний API — адаптер в `bot/integrations/` + тест.
 5. Тесты в `tests/modules/<имя>/`.
 
+**Добавить новый сервис:**
+1. Пакет `bot/<имя>/`: `__main__.py` (точка входа: config → glitchtip → session
+   factory → uvicorn/цикл), фабрика приложения, `GET /healthz` если это HTTP.
+2. Поля конфига в `bot/core/config.py` + строки в `.env.example`.
+3. `deploy/vf-materials-<имя>.service` + включение в `deploy/deploy.sh`
+   (рестарт по флагу в .env) и `deploy/setup-server.sh` (юнит + sudoers).
+4. Nginx-локация в `deploy/nginx-mybot.conf`, если сервис смотрит наружу.
+5. Тесты в `tests/<имя>/`.
+
 **Добавить ИИ-агента:**
 1. Класс агента в `bot/agents/concrete/<имя>.py`, наследник `BaseAgent`.
 2. Зарегистрировать в `bot/agents/registry.py`.
@@ -209,8 +261,11 @@ uv run alembic upgrade head                       # применить мигр�
    живут в `.env` на сервере.
 4. **Перед продакшен-пушем** проверки должны быть зелёными: `ruff check`,
    `ruff format --check`, `mypy`, `pytest`.
-5. **Миграции применяются автоматически** в `deploy/deploy.sh`. Меняешь модель —
-   генерируешь миграцию локально и коммитишь её.
+5. **Миграции применяются автоматически** в `deploy/deploy.sh` — один раз, до
+   перезапуска всех сервисов. Меняешь модель — генерируешь миграцию локально
+   и коммитишь её. Автодеплой поднимает сервисы по флагам в `.env` сервера
+   (`ADMIN_SECRET_KEY`, `API_TOKEN`/`LEAD_API_TOKEN`, `WORKER_ENABLED`);
+   новые systemd-юниты на существующий сервер добавляет `deploy/setup-server.sh`.
 
 ## Антипаттерны (запрещено)
 
