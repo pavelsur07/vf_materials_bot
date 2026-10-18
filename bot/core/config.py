@@ -33,6 +33,11 @@ class Settings(BaseSettings):
     admin_username: str = "admin"
     admin_password_hash: str = ""
 
+    # Публичный API для бизнес-интеграций (python -m bot.api)
+    api_host: str = "127.0.0.1"
+    api_port: int = 8083
+    api_token: str = ""
+
     database_url: str = "sqlite+aiosqlite:///./vf_materials_bot.db"
 
     glitchtip_dsn: str = ""

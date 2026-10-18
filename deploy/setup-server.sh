@@ -6,6 +6,7 @@ set -euo pipefail
 
 SERVICE_NAME="vf-materials-bot"
 ADMIN_SERVICE_NAME="vf-materials-bot-admin"
+API_SERVICE_NAME="vf-materials-api"
 WORK_DIR="/opt/vf_materials_bot"
 REPO_URL="${1:-}"
 
@@ -29,6 +30,9 @@ rm -f /etc/sudoers.d/vf-materials-bot-deploy
     echo "deploy_user ALL=(ALL) NOPASSWD: /bin/systemctl restart ${ADMIN_SERVICE_NAME}"
     echo "deploy_user ALL=(ALL) NOPASSWD: /bin/systemctl status ${ADMIN_SERVICE_NAME}"
     echo "deploy_user ALL=(ALL) NOPASSWD: /bin/systemctl is-active ${ADMIN_SERVICE_NAME}"
+    echo "deploy_user ALL=(ALL) NOPASSWD: /bin/systemctl restart ${API_SERVICE_NAME}"
+    echo "deploy_user ALL=(ALL) NOPASSWD: /bin/systemctl status ${API_SERVICE_NAME}"
+    echo "deploy_user ALL=(ALL) NOPASSWD: /bin/systemctl is-active ${API_SERVICE_NAME}"
 } > /etc/sudoers.d/vf-materials-bot-deploy
 chmod 440 /etc/sudoers.d/vf-materials-bot-deploy
 visudo -c
@@ -60,10 +64,12 @@ uv run alembic upgrade head
 echo "==> Setting up systemd services..."
 cp "deploy/vf-materials-bot.service" /etc/systemd/system/
 cp "deploy/vf-materials-bot-admin.service" /etc/systemd/system/
+cp "deploy/vf-materials-api.service" /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable "$SERVICE_NAME"
-# Админка стартует вручную/автодеплоем после появления ADMIN_* в .env.
+# Админка и API стартуют вручную/автодеплоем после появления ADMIN_*/API_* в .env.
 systemctl enable "$ADMIN_SERVICE_NAME"
+systemctl enable "$API_SERVICE_NAME"
 
 echo ""
 echo "==> Setup complete."

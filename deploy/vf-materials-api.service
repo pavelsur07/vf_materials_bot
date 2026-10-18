@@ -1,0 +1,15 @@
+# /etc/systemd/system/vf-materials-api.service
+[Unit]
+Description=Vash Findir public API
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/vf_materials_bot
+EnvironmentFile=/opt/vf_materials_bot/.env
+ExecStart=/opt/vf_materials_bot/.venv/bin/python -m bot.api
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

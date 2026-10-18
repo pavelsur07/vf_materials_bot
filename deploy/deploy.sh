@@ -6,6 +6,7 @@ set -euo pipefail
 
 SERVICE_NAME="vf-materials-bot"
 ADMIN_SERVICE_NAME="vf-materials-bot-admin"
+API_SERVICE_NAME="vf-materials-api"
 WORK_DIR="/opt/vf_materials_bot"
 
 # sudo сбрасывает PATH до secure_path, где нет uv: добавляем известные места установки.
@@ -24,7 +25,7 @@ Deploys the latest main branch to production:
   2. uv sync
   3. alembic upgrade head
   4. systemctl restart vf-materials-bot
-     (+ vf-materials-bot-admin, если в .env задан ADMIN_SECRET_KEY)
+     (+ vf-materials-bot-admin при ADMIN_SECRET_KEY, + vf-materials-api при API_TOKEN/LEAD_API_TOKEN)
 
 Requires:
   - repository cloned to $WORK_DIR
@@ -65,6 +66,12 @@ if grep -qE '^ADMIN_SECRET_KEY=.+' .env; then
 else
     log "WARNING: ADMIN_SECRET_KEY is not set in .env, skipping $ADMIN_SERVICE_NAME"
     log "         To enable the admin panel, add ADMIN_* vars via deploy/update-env.sh"
+fi
+
+if grep -qE '^(API_TOKEN|LEAD_API_TOKEN)=.+' .env; then
+    SERVICES+=("$API_SERVICE_NAME")
+else
+    log "WARNING: neither API_TOKEN nor LEAD_API_TOKEN is set in .env, skipping $API_SERVICE_NAME"
 fi
 
 for service in "${SERVICES[@]}"; do
