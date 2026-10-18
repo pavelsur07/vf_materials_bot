@@ -82,6 +82,19 @@ else
     log "WARNING: WORKER_ENABLED is not set to true in .env, skipping $WORKER_SERVICE_NAME"
 fi
 
+# Сервис без установленного юнита (новый сервис, сервер ещё не настраивали)
+# пропускаем, а не падаем: sudo -n systemctl restart для него всё равно отказал бы.
+INSTALLED_SERVICES=()
+for service in "${SERVICES[@]}"; do
+    if systemctl cat "$service" &>/dev/null; then
+        INSTALLED_SERVICES+=("$service")
+    else
+        log "WARNING: unit $service is not installed on this server, skipping"
+        log "         Install it as root: bash deploy/setup-server.sh"
+    fi
+done
+SERVICES=("${INSTALLED_SERVICES[@]}")
+
 for service in "${SERVICES[@]}"; do
     log "Restarting service $service..."
     sudo -n systemctl restart "$service"
