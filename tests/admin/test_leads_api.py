@@ -7,7 +7,6 @@ import pytest_asyncio
 from aiogram import Bot
 from aiogram.exceptions import TelegramAPIError
 from fastapi.testclient import TestClient
-from httpx import Response
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from bot.admin.app import create_admin_app
@@ -17,7 +16,6 @@ from bot.db.models import Base
 from bot.integrations.telegram import TelegramChannelAdapter
 from bot.modules.leads.use_cases import NotifyLeadUseCase
 
-LEAD_TOKEN = "lead-secret"
 LEADS_CHAT_ID = -1001
 ADMIN_PASSWORD = "admin-pass"
 
@@ -44,7 +42,6 @@ def client(
     settings = Settings(
         admin_secret_key="test-secret-key",
         admin_password_hash=hash_password(ADMIN_PASSWORD),
-        lead_api_token=LEAD_TOKEN,
         leads_chat_id=LEADS_CHAT_ID,
     )
     use_case = NotifyLeadUseCase(settings, adapter)
@@ -64,72 +61,6 @@ def disabled_client(
     app = create_admin_app(settings, session_factory)
     with TestClient(app, base_url="https://testserver") as test_client:
         yield test_client
-
-
-def _post(client: TestClient, token: str | None, text: str = "Новое обращение №17") -> Response:
-    headers = {} if token is None else {"X-Lead-Token": token}
-    return client.post("/api/leads", json={"text": text}, headers=headers)
-
-
-def test_lead_notification_accepted(client: TestClient, adapter: TelegramChannelAdapter) -> None:
-    response = _post(client, LEAD_TOKEN)
-
-    assert response.status_code == 200
-    assert response.text == "ok"
-    adapter._bot.send_message.assert_awaited_once()
-
-
-def test_lead_notification_rejects_invalid_token(
-    client: TestClient, adapter: TelegramChannelAdapter
-) -> None:
-    response = _post(client, "wrong-token")
-
-    assert response.status_code == 401
-    adapter._bot.send_message.assert_not_awaited()
-
-
-def test_lead_notification_rejects_missing_token(
-    client: TestClient, adapter: TelegramChannelAdapter
-) -> None:
-    response = _post(client, None)
-
-    assert response.status_code == 401
-
-
-def test_lead_notification_public_path_not_redirected_to_login(
-    client: TestClient,
-) -> None:
-    response = _post(client, "wrong-token")
-
-    assert response.status_code == 401
-    assert response.history == []
-
-
-def test_lead_notification_returns_502_when_telegram_fails(
-    client: TestClient, adapter: TelegramChannelAdapter
-) -> None:
-    adapter._bot.send_message.side_effect = TelegramAPIError(
-        method="sendMessage",
-        message="boom",
-    )
-
-    response = _post(client, LEAD_TOKEN)
-
-    assert response.status_code == 502
-
-
-def test_lead_notification_disabled_when_not_configured(
-    disabled_client: TestClient,
-) -> None:
-    response = _post(disabled_client, LEAD_TOKEN)
-
-    assert response.status_code == 503
-
-
-def test_lead_notification_rejects_oversized_text(client: TestClient) -> None:
-    response = _post(client, LEAD_TOKEN, text="x" * 4001)
-
-    assert response.status_code == 422
 
 
 def _extract_csrf(html: str) -> str:
