@@ -22,24 +22,11 @@ if ! id -u deploy_user &>/dev/null; then
 fi
 usermod -aG sudo deploy_user
 
-echo "==> Setting up sudoers..."
-rm -f /etc/sudoers.d/vf-materials-bot-deploy
+echo "==> Bootstrapping sudoers..."
+echo "    (полную версию с правами на все сервисы при каждом деплое пишет deploy/deploy.sh)"
 {
-    echo "deploy_user ALL=(ALL) NOPASSWD: /bin/systemctl restart ${SERVICE_NAME}"
-    echo "deploy_user ALL=(ALL) NOPASSWD: /bin/systemctl status ${SERVICE_NAME}"
-    echo "deploy_user ALL=(ALL) NOPASSWD: /bin/systemctl is-active ${SERVICE_NAME}"
-    echo "deploy_user ALL=(ALL) NOPASSWD: /bin/systemctl restart ${ADMIN_SERVICE_NAME}"
-    echo "deploy_user ALL=(ALL) NOPASSWD: /bin/systemctl status ${ADMIN_SERVICE_NAME}"
-    echo "deploy_user ALL=(ALL) NOPASSWD: /bin/systemctl is-active ${ADMIN_SERVICE_NAME}"
-    echo "deploy_user ALL=(ALL) NOPASSWD: /bin/systemctl restart ${API_SERVICE_NAME}"
-    echo "deploy_user ALL=(ALL) NOPASSWD: /bin/systemctl status ${API_SERVICE_NAME}"
-    echo "deploy_user ALL=(ALL) NOPASSWD: /bin/systemctl is-active ${API_SERVICE_NAME}"
-    echo "deploy_user ALL=(ALL) NOPASSWD: /bin/systemctl restart ${WORKER_SERVICE_NAME}"
-    echo "deploy_user ALL=(ALL) NOPASSWD: /bin/systemctl status ${WORKER_SERVICE_NAME}"
-    echo "deploy_user ALL=(ALL) NOPASSWD: /bin/systemctl is-active ${WORKER_SERVICE_NAME}"
-    # Нужны автодеплою (GitHub Actions шлёт sudo deploy/deploy.sh) и просмотру логов
     echo "deploy_user ALL=(ALL) NOPASSWD: /usr/bin/journalctl"
-    echo "deploy_user ALL=(ALL) NOPASSWD: /opt/vf_materials_bot/deploy/deploy.sh"
+    echo "deploy_user ALL=(ALL) NOPASSWD: ${WORK_DIR}/deploy/deploy.sh"
 } > /etc/sudoers.d/vf-materials-bot-deploy
 chmod 440 /etc/sudoers.d/vf-materials-bot-deploy
 visudo -c

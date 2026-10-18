@@ -227,9 +227,10 @@ uv run alembic upgrade head                       # применить мигр�
 1. Пакет `bot/<имя>/`: `__main__.py` (точка входа: config → glitchtip → session
    factory → uvicorn/цикл), фабрика приложения, `GET /healthz` если это HTTP.
 2. Поля конфига в `bot/core/config.py` + строки в `.env.example`.
-3. `deploy/vf-materials-<имя>.service` + включение в `deploy/deploy.sh`
-   (рестарт по флагу в .env) и `deploy/setup-server.sh` (юнит + sudoers).
-4. Nginx-локация в `deploy/nginx-mybot.conf`, если сервис смотрит наружу.
+3. `deploy/vf-materials-<имя>.service` + флаг включения в `deploy/deploy.sh`
+   (рестарт по флагу в .env). Деплой сам ставит юнит, enable и sudoers.
+4. Nginx-локация в `deploy/nginx-mybot.conf`, если сервис смотрит наружу —
+   деплой сам применит конфиг (nginx -t + reload).
 5. Тесты в `tests/<имя>/`.
 
 **Добавить ИИ-агента:**
@@ -251,9 +252,12 @@ uv run alembic upgrade head                       # применить мигр�
 
 ## Деплой и обновление (правила, не догадки)
 
-1. **Код деплоится автоматически** при пуше в `master` через GitHub Actions и
-   `deploy/deploy.sh`. Руками на сервере правим код только в исключительных
-   случаях.
+1. **Код и инфраструктура деплоятся автоматически** при пуше в `master` через
+   GitHub Actions и `deploy/deploy.sh` (исполняется от root). Деплой сам
+   синхронизирует с репозиторием systemd-юниты (`deploy/*.service`), sudoers
+   и nginx-конфиг (`deploy/nginx-mybot.conf`). Руками на сервере правим
+   только `.env` (через `deploy/update-env.sh`); юниты/sudoers/nginx — только
+   через репозиторий, иначе деплой перезапишет правки.
 2. **`.env` не в репозитории** и не обновляется автодеплоем. Для обновления
    `.env` на сервере используем `deploy/update-env.sh`.
 3. **Секреты не храним в GitHub Secrets** приложения. В GitHub Secrets только
@@ -264,8 +268,10 @@ uv run alembic upgrade head                       # применить мигр�
 5. **Миграции применяются автоматически** в `deploy/deploy.sh` — один раз, до
    перезапуска всех сервисов. Меняешь модель — генерируешь миграцию локально
    и коммитишь её. Автодеплой поднимает сервисы по флагам в `.env` сервера
-   (`ADMIN_SECRET_KEY`, `API_TOKEN`/`LEAD_API_TOKEN`, `WORKER_ENABLED`);
-   новые systemd-юниты на существующий сервер добавляет `deploy/setup-server.sh`.
+   (`ADMIN_SECRET_KEY`, `API_TOKEN`/`LEAD_API_TOKEN`, `WORKER_ENABLED`).
+   Новый сервис = юнит в `deploy/` + флаг в `deploy.sh` + (при публичном
+   пути) локация в `deploy/nginx-mybot.conf` — ручных шагов на сервере нет.
+   `deploy/setup-server.sh` — только первичная настройка чистого сервера.
 
 ## Антипаттерны (запрещено)
 
