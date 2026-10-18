@@ -37,6 +37,9 @@ rm -f /etc/sudoers.d/vf-materials-bot-deploy
     echo "deploy_user ALL=(ALL) NOPASSWD: /bin/systemctl restart ${WORKER_SERVICE_NAME}"
     echo "deploy_user ALL=(ALL) NOPASSWD: /bin/systemctl status ${WORKER_SERVICE_NAME}"
     echo "deploy_user ALL=(ALL) NOPASSWD: /bin/systemctl is-active ${WORKER_SERVICE_NAME}"
+    # Нужны автодеплою (GitHub Actions шлёт sudo deploy/deploy.sh) и просмотру логов
+    echo "deploy_user ALL=(ALL) NOPASSWD: /usr/bin/journalctl"
+    echo "deploy_user ALL=(ALL) NOPASSWD: /opt/vf_materials_bot/deploy/deploy.sh"
 } > /etc/sudoers.d/vf-materials-bot-deploy
 chmod 440 /etc/sudoers.d/vf-materials-bot-deploy
 visudo -c
