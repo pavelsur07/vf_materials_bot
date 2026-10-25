@@ -37,6 +37,10 @@ class Settings(BaseSettings):
     api_host: str = "127.0.0.1"
     api_port: int = 8083
     api_token: str = ""
+    # Корень документации API: Swagger UI на <путь>, ReDoc на <путь>/redoc,
+    # openapi.json на <путь>/openapi.json. «» — docs выключены. Открытый доступ
+    # закрывается basic auth на nginx (креды — API_DOCS_USER/API_DOCS_PASSWORD).
+    api_docs_path: str = ""
 
     # Фоновый воркер (python -m bot.worker): забирает задачи из очереди jobs
     worker_enabled: bool = False

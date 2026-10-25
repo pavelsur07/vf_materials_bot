@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VF API — документация для интеграторов</title>
+  <style>
+    :root { color-scheme: light; }
+    body { font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+           margin: 0; background: #f5f6f8; color: #1f2328; }
+    main { max-width: 860px; margin: 0 auto; padding: 32px 20px 64px; }
+    h1 { font-size: 28px; margin: 0 0 8px; }
+    h2 { font-size: 20px; margin-top: 40px; border-bottom: 1px solid #d8dbe0;
+         padding-bottom: 6px; }
+    code { background: #eaecef; border-radius: 4px; padding: 1px 5px;
+           font-family: ui-monospace, "Cascadia Code", Consolas, monospace; }
+    pre { background: #24292f; color: #e6edf3; border-radius: 8px;
+          padding: 16px; overflow-x: auto; }
+    pre code { background: none; padding: 0; color: inherit; }
+    table { border-collapse: collapse; width: 100%; background: #fff; }
+    th, td { border: 1px solid #d8dbe0; padding: 8px 12px; text-align: left;
+             vertical-align: top; }
+    th { background: #f0f1f3; }
+    .note { background: #fff8c5; border: 1px solid #eac54f; border-radius: 8px;
+            padding: 12px 16px; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>VF API</h1>
+  <p>Публичный API платформы «Ваш Финдир» для бизнес-интеграций.
+     Сейчас доступен один endpoint — приём уведомлений о лидах.</p>
+
+  <h2>Быстрый старт</h2>
+  <p>Первый успешный вызов — один запрос:</p>
+  <pre><code>curl -X POST "{{ base_url }}/api/leads" \
+  -H "x-api-token: ВАШ_ТОКЕН" \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Новая заявка с сайта\nИмя: Иван Петров\nТелефон: +7 900 123-45-67"}'</code></pre>
+  <p>Ответ — <code>200 OK</code> с телом <code>ok</code>.</p>
+
+  <h2>Аутентификация</h2>
+  <p>Токен передаётся в заголовке <code>x-api-token</code>. Заголовок
+     <code>x-lead-token</code> с токеном лида тоже принимается — старая интеграция
+     продолжит работать без изменений.</p>
+  <p>Токен, а также логин и пароль для интерактивной документации выдаёт
+     менеджер «Ваш Финдир».</p>
+
+  <h2>Ошибки</h2>
+  <table>
+    <tr><th>Код</th><th>Значение</th><th>Что делать</th></tr>
+    <tr>
+      <td><code>401</code></td>
+      <td>Невалидный или отсутствующий токен</td>
+      <td>Проверить заголовок <code>x-api-token</code> и сам токен</td>
+    </tr>
+    <tr>
+      <td><code>502</code></td>
+      <td>Telegram недоступен — уведомление не доставлено</td>
+      <td>Повторить запрос позже (тело запроса можно отправить заново)</td>
+    </tr>
+    <tr>
+      <td><code>503</code></td>
+      <td>Сервис отключён или релей лидов не настроен</td>
+      <td>Сообщить менеджеру «Ваш Финдир»</td>
+    </tr>
+  </table>
+
+  {% if docs_path %}
+  <h2>Интерактивная документация</h2>
+  <ul>
+    <li><a href="/{{ docs_path }}">Swagger UI</a> — выполняйте запросы прямо из
+        браузера (кнопка «Authorize», вставьте свой токен);</li>
+    <li><a href="/{{ docs_path }}/redoc">ReDoc</a> — справочник в виде статьи.</li>
+  </ul>
+  <p class="note">Доступ к интерактивной документации закрыт логином и паролем —
+     их выдают вместе с токеном.</p>
+  {% endif %}
+
+  <h2>Поддержка</h2>
+  <p>Вопросы по интеграции — вашему менеджеру «Ваш Финдир».</p>
+</main>
+</body>
+</html>

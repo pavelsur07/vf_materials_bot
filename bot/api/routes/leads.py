@@ -8,7 +8,17 @@ from bot.modules.leads.use_cases import NotifyLeadUseCase
 router = APIRouter(dependencies=[Depends(verify_api_token)])
 
 
-@router.post("/api/leads")
+@router.post(
+    "/api/leads",
+    tags=["Leads"],
+    summary="Принять уведомление о новом лиде",
+    response_class=PlainTextResponse,
+    responses={
+        401: {"description": "Невалидный или отсутствующий токен"},
+        502: {"description": "Telegram недоступен — уведомление не доставлено"},
+        503: {"description": "Сервис отключён или релей лидов не настроен"},
+    },
+)
 async def create_lead_notification(request: Request, data: LeadNotificationIn) -> PlainTextResponse:
     use_case: NotifyLeadUseCase | None = request.app.state.lead_notify_use_case
     if use_case is None:

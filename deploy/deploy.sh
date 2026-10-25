@@ -9,6 +9,7 @@ set -euo pipefail
 #   2. sync server infrastructure FROM the repository (source of truth):
 #      - deploy/*.service        -> /etc/systemd/system/ (+ enable, daemon-reload)
 #      - /etc/sudoers.d/vf-materials-bot-deploy (regenerated, visudo-checked)
+#      - /etc/nginx/.htpasswd-api-docs (basic auth docs API, из API_DOCS_USER/API_DOCS_PASSWORD в .env)
 #      - deploy/nginx-mybot.conf -> /etc/nginx/sites-available/mybots (+ nginx -t, reload,
 #        old config backed up to /etc/vf-materials-backup)
 #   3. uv sync
@@ -123,6 +124,22 @@ chmod 440 "$sudoers_tmp"
 visudo -cf "$sudoers_tmp" >/dev/null
 cp "$sudoers_tmp" "$SUDOERS_FILE"
 rm -f "$sudoers_tmp"
+
+log "Generating API docs htpasswd for nginx basic auth..."
+# nginx-mybot.conf ссылается на этот файл (auth_basic_user_file), поэтому он должен
+# существовать до nginx -t. Креды берём из .env; если не заданы — пишем случайную
+# пару: конфиг валиден, но docs закрыты для всех.
+API_DOCS_HTPASSWD="/etc/nginx/.htpasswd-api-docs"
+API_DOCS_USER="$(sed -n 's/^API_DOCS_USER=//p' .env | tail -n 1)"
+API_DOCS_PASSWORD="$(sed -n 's/^API_DOCS_PASSWORD=//p' .env | tail -n 1)"
+if [[ -z "$API_DOCS_USER" || -z "$API_DOCS_PASSWORD" ]]; then
+    log "WARNING: API_DOCS_USER/API_DOCS_PASSWORD not set in .env, API docs closed for everyone"
+    API_DOCS_USER="disabled"
+    API_DOCS_PASSWORD="$(openssl rand -hex 24)"
+fi
+printf '%s:%s\n' "$API_DOCS_USER" "$(openssl passwd -apr1 "$API_DOCS_PASSWORD")" > "$API_DOCS_HTPASSWD"
+chmod 640 "$API_DOCS_HTPASSWD"
+chown root:www-data "$API_DOCS_HTPASSWD" 2>/dev/null || true
 
 log "Syncing nginx site config from repository..."
 if [[ -f "$NGINX_AVAIL" ]] && ! cmp -s "$NGINX_SRC" "$NGINX_AVAIL"; then
