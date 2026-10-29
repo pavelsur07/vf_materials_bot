@@ -1,4 +1,4 @@
-from bot.modules.onboarding.keyboards import (
+from vashfindir.modules.onboarding.keyboards import (
     CHECK_BUTTON_TEXT,
     GET_MATERIAL_BUTTON_TEXT,
     RETRY_BUTTON_TEXT,
@@ -48,8 +48,8 @@ def test_retry_check_kb() -> None:
 
 
 def test_onboarding_kb_subscribed() -> None:
-    from bot.modules.onboarding.dto import OnboardingResult
-    from bot.services.subscription import SubscriptionStatus
+    from vashfindir.domain.subscription import SubscriptionStatus
+    from vashfindir.modules.onboarding.dto import OnboardingResult
 
     result = OnboardingResult(
         status=SubscriptionStatus.SUBSCRIBED,
@@ -65,8 +65,8 @@ def test_onboarding_kb_subscribed() -> None:
 
 
 def test_onboarding_kb_not_subscribed() -> None:
-    from bot.modules.onboarding.dto import OnboardingResult
-    from bot.services.subscription import SubscriptionStatus
+    from vashfindir.domain.subscription import SubscriptionStatus
+    from vashfindir.modules.onboarding.dto import OnboardingResult
 
     result = OnboardingResult(
         status=SubscriptionStatus.NOT_SUBSCRIBED,
@@ -82,8 +82,8 @@ def test_onboarding_kb_not_subscribed() -> None:
 
 
 def test_onboarding_kb_check_error() -> None:
-    from bot.modules.onboarding.dto import OnboardingResult
-    from bot.services.subscription import SubscriptionStatus
+    from vashfindir.domain.subscription import SubscriptionStatus
+    from vashfindir.modules.onboarding.dto import OnboardingResult
 
     result = OnboardingResult(
         status=SubscriptionStatus.CHECK_ERROR,

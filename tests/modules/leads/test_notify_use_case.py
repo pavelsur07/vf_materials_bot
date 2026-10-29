@@ -5,10 +5,10 @@ from aiogram import Bot
 from aiogram.enums import ParseMode
 from aiogram.exceptions import TelegramAPIError
 
-from bot.core.config import Settings
-from bot.integrations.telegram import TelegramChannelAdapter
-from bot.modules.leads.dto import LeadNotificationIn
-from bot.modules.leads.use_cases import NotifyLeadUseCase
+from vashfindir.core.config import Settings
+from vashfindir.integrations.telegram import TelegramChannelAdapter
+from vashfindir.modules.leads.dto import LeadNotificationIn
+from vashfindir.modules.leads.use_cases import NotifyLeadUseCase
 
 
 @pytest.fixture

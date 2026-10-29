@@ -28,7 +28,7 @@ if [[ "$PASSWORD" != "$PASSWORD_CONFIRM" ]]; then
 fi
 
 # Пароль передаётся через stdin, а не argv — чтобы не светился в истории и ps.
-HASH=$(printf '%s' "$PASSWORD" | uv run python -m bot.admin.hashpw)
+HASH=$(printf '%s' "$PASSWORD" | uv run python -m vashfindir.apps.admin.hashpw)
 unset PASSWORD PASSWORD_CONFIRM
 
 if [[ "$PRINT_ONLY" == "1" ]]; then

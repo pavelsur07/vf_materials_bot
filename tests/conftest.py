@@ -3,7 +3,7 @@ from collections.abc import AsyncIterator
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from bot.db.models import Base
+from vashfindir.db.models import Base
 
 
 @pytest_asyncio.fixture

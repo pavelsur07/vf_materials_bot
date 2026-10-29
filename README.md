@@ -2,7 +2,8 @@
 
 Платформа сервисов для бизнеса: Telegram-бот, публичное API для интеграций,
 веб-админка и фоновый воркер. Всё — в одном репозитории: общий конфиг `.env`,
-общая SQLite (WAL) и единый автодеплой. Бот — один из каналов доставки.
+общая SQLite (WAL) и единый автодеплой. Бот — один из каналов доставки и один
+из процессов платформы, а не монолит.
 
 Стек: Python 3.12+, aiogram 3.x, SQLite (SQLAlchemy 2.x async + Alembic),
 uv, ruff, mypy, pytest. Правила разработки — в [AGENTS.md](AGENTS.md).
@@ -10,29 +11,24 @@ uv, ruff, mypy, pytest. Правила разработки — в [AGENTS.md](A
 ## Структура
 
 ```
-bot/
-├── __main__.py         # точка входа бота: polling или webhook — по MODE из .env
+vashfindir/             # корневой пакет платформы
 ├── core/               # конфиг, DI-контейнер, исключения
-│   ├── config.py
-│   ├── container.py
-│   └── exceptions.py
-├── admin/              # веб-админ-панель (FastAPI), отдельный процесс: python -m bot.admin
-├── api/                # публичное API для бизнес-интеграций: python -m bot.api
-├── worker/             # фоновый воркер (очередь jobs): python -m bot.worker
-├── modules/            # функциональные модули (mini-apps)
+├── db/                 # модели, session factory, миграции Alembic
+├── domain/             # кросс-модульная бизнес-логика (чистые функции/классы)
+├── modules/            # бизнес-модули (mini-apps)
 │   └── onboarding/     # сценарий старта и проверки подписки
 ├── agents/             # ИИ-агенты: интерфейс, регистр, оркестратор
 ├── knowledge/          # база знаний (RAG)
 ├── integrations/       # адаптеры для внешних API (Telegram, MOEX, ЦБ и др.)
-├── services/           # кросс-модульная бизнес-логика
-├── db/                 # модели, session factory, миграции Alembic
-├── handlers/           # сборщик роутеров + общие error handlers
-├── keyboards/          # общие клавиатуры (если появятся)
-├── dialogs/            # общие диалоги/тексты (если появятся)
-└── middlewares/        # db-сессия, DI
+└── apps/               # процессы (deployable units) — «сервисы»
+    ├── bot/            # Telegram-бот: __main__.py, handlers/, middlewares/
+    ├── admin/          # веб-админ-панель (FastAPI): python -m vashfindir.apps.admin
+    ├── api/            # публичное API для бизнес-интеграций: python -m vashfindir.apps.api
+    └── worker/         # фоновый воркер (очередь jobs): python -m vashfindir.apps.worker
 
-deploy/                 # nginx-конфиг и systemd-юнит для прода
-tests/                  # зеркалит структуру bot/
+data/                   # локальная SQLite (в git не коммитится)
+deploy/                 # nginx-конфиг и systemd-юниты для прода
+tests/                  # зеркалит структуру vashfindir/
 ```
 
 ## Быстрый старт (локально)
@@ -52,14 +48,15 @@ tests/                  # зеркалит структуру bot/
    ```
 4. Запустить бота (по умолчанию `MODE=polling`):
    ```bash
-   uv run python -m bot
+   uv run python -m vashfindir.apps.bot
    ```
 
 ## Веб-админка
 
-Минимальная админ-панель на FastAPI живёт в `bot/admin/` и запускается отдельным
-процессом (`python -m bot.admin`). Авторизация — логин/пароль (bcrypt-хэш в `.env`),
-сессия — подписанная кука, на формах — CSRF-токен.
+Минимальная админ-панель на FastAPI живёт в `vashfindir/apps/admin/` и
+запускается отдельным процессом (`python -m vashfindir.apps.admin`).
+Авторизация — логин/пароль (bcrypt-хэш в `.env`), сессия — подписанная кука,
+на формах — CSRF-токен.
 
 1. В `.env` задать:
    ```bash
@@ -70,9 +67,9 @@ tests/                  # зеркалит структуру bot/
    ADMIN_SECRET_KEY=$(openssl rand -hex 32)
    ADMIN_USERNAME=admin
    ```
-   Альтернатива без обновления `.env`: `uv run python -m bot.admin.hashpw`
-   (интерактивно или `printf '%s' 'пароль' | uv run python -m bot.admin.hashpw`).
-2. Локально: `uv run python -m bot.admin` → http://127.0.0.1:8082/admin/
+   Альтернатива без обновления `.env`: `uv run python -m vashfindir.apps.admin.hashpw`
+   (интерактивно или `printf '%s' 'пароль' | uv run python -m vashfindir.apps.admin.hashpw`).
+2. Локально: `uv run python -m vashfindir.apps.admin` → http://127.0.0.1:8082/admin/
 3. На сервере (первый раз): скопировать юнит и включить сервис, обновить nginx:
    ```bash
    sudo cp deploy/vf-materials-bot-admin.service /etc/systemd/system/
@@ -81,36 +78,37 @@ tests/                  # зеркалит структуру bot/
    Nginx проксирует `/admin/` → `127.0.0.1:8082` (см. `deploy/nginx-mybot.conf`).
    Дальше `deploy/deploy.sh` перезапускает оба сервиса автоматически.
 
-Админка — самодостаточный островок: роуты тонкие, логика в `bot/services/`.
-Удаление `bot/admin/` + юнита + блока nginx возвращает проект в исходное состояние.
+Админка — самодостаточный островок: роуты тонкие, логика в `vashfindir/domain/`.
+Удаление `vashfindir/apps/admin/` + юнита + блока nginx возвращает проект
+в исходное состояние.
 
-## Публичное API (bot/api) и воркер (bot/worker)
+## Публичное API (apps/api) и воркер (apps/worker)
 
 Машинные endpoint'ы для бизнес-интеграций живут в отдельном процессе
-`python -m bot.api` (порт 8083), а не в админке. Аутентификация — токен в
-заголовке `x-api-token` (принимается и legacy `x-lead-token` с `LEAD_API_TOKEN`,
-так что сайт-источник лидов интеграцию не меняет). Первый endpoint —
-`POST /api/leads`: сайт шлёт готовый текст, сервис пересылает его в Telegram.
-Nginx проксирует `/api/` → `127.0.0.1:8083`.
+`python -m vashfindir.apps.api` (порт 8083), а не в админке. Аутентификация —
+токен в заголовке `x-api-token` (принимается и legacy `x-lead-token` с
+`LEAD_API_TOKEN`, так что сайт-источник лидов интеграцию не меняет). Первый
+endpoint — `POST /api/leads`: сайт шлёт готовый текст, сервис пересылает его
+в Telegram. Nginx проксирует `/api/` → `127.0.0.1:8083`.
 
-Воркер (`python -m bot.worker`) — отдельный процесс, который забирает задачи
-из очереди `jobs` в общей SQLite: сервисы кладут (`enqueue_job` из
-`bot/services/jobs.py`), воркер выполняет по реестру `bot/worker/handlers.py`
-и отмечает done/failed. Включается флагом `WORKER_ENABLED=true` в `.env`
-(тогда его перезапускает `deploy/deploy.sh`).
+Воркер (`python -m vashfindir.apps.worker`) — отдельный процесс, который
+забирает задачи из очереди `jobs` в общей SQLite: сервисы кладут (`enqueue_job`
+из `vashfindir/domain/jobs.py`), воркер выполняет по реестру
+`vashfindir/apps/worker/handlers.py` и отмечает done/failed. Включается флагом
+`WORKER_ENABLED=true` в `.env` (тогда его перезапускает `deploy/deploy.sh`).
 
 ## Проверки перед коммитом
 
 ```bash
 uv run ruff check --fix .
 uv run ruff format --check
-uv run mypy bot/
+uv run mypy vashfindir/
 uv run pytest
 ```
 
 ## Деплой
 
-Сервер: `109.73.204.179`. Бот lives в `/opt/vf_materials_bot`.
+Сервер: `109.73.204.179`. Платформа lives в `/opt/vf_materials_bot`.
 
 ### Что обновляется автоматически, а что вручную
 
@@ -201,7 +199,7 @@ Nginx проксирует `https://mybots.vashfindir.ru/vashfindir` на
 
 ## Мониторинг ошибок (GlitchTip / Sentry)
 
-Бот отправляет необработанные исключения в GlitchTip через `sentry-sdk`.
+Сервисы отправляют необработанные исключения в GlitchTip через `sentry-sdk`.
 Чтобы включить, добавь в `.env`:
 
 ```

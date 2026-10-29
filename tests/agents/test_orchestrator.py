@@ -1,8 +1,8 @@
 import pytest
 
-from bot.agents.base import AgentResult, BaseAgent
-from bot.agents.orchestrator import AgentOrchestrator
-from bot.agents.registry import AgentRegistry
+from vashfindir.agents.base import AgentResult, BaseAgent
+from vashfindir.agents.orchestrator import AgentOrchestrator
+from vashfindir.agents.registry import AgentRegistry
 
 
 class DummyAgent(BaseAgent):

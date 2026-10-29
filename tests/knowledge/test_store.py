@@ -1,6 +1,6 @@
 import pytest
 
-from bot.knowledge.store import InMemoryKnowledgeStore
+from vashfindir.knowledge.store import InMemoryKnowledgeStore
 
 
 @pytest.fixture

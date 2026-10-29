@@ -6,7 +6,7 @@ from aiogram.enums import ParseMode
 from aiogram.exceptions import TelegramAPIError
 from aiogram.types import ChatMemberMember, User
 
-from bot.integrations.telegram import TelegramChannelAdapter
+from vashfindir.integrations.telegram import TelegramChannelAdapter
 
 
 @pytest.fixture

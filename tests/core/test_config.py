@@ -1,4 +1,4 @@
-from bot.core.config import Settings
+from vashfindir.core.config import Settings
 
 
 def test_blank_leads_topic_id_defaults_to_zero() -> None:

@@ -3,11 +3,11 @@ from unittest.mock import AsyncMock
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.core.config import Settings
-from bot.integrations.telegram import TelegramChannelAdapter
-from bot.modules.onboarding.dto import OnboardingContext
-from bot.modules.onboarding.use_cases import OnboardingUseCase
-from bot.services.subscription import SubscriptionStatus
+from vashfindir.core.config import Settings
+from vashfindir.domain.subscription import SubscriptionStatus
+from vashfindir.integrations.telegram import TelegramChannelAdapter
+from vashfindir.modules.onboarding.dto import OnboardingContext
+from vashfindir.modules.onboarding.use_cases import OnboardingUseCase
 
 
 @pytest.fixture

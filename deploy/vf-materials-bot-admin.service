@@ -7,7 +7,7 @@ After=network.target
 Type=simple
 WorkingDirectory=/opt/vf_materials_bot
 EnvironmentFile=/opt/vf_materials_bot/.env
-ExecStart=/opt/vf_materials_bot/.venv/bin/python -m bot.admin
+ExecStart=/opt/vf_materials_bot/.venv/bin/python -m vashfindir.apps.admin
 Restart=on-failure
 RestartSec=5
 
