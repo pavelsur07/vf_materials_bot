@@ -19,7 +19,9 @@ set -euo pipefail
 # Server-side edits of units/sudoers/nginx are overwritten on every deploy.
 # Change them in the repository instead — ручных правок на сервере не требуется.
 
-WORK_DIR="/opt/vf_materials_bot"
+# Каталог репозитория берём из расположения скрипта, а не хардкодом: деплой
+# переживает переименование каталога на сервере (/opt/vf_materials_bot → /opt/vashfindir).
+WORK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SYSTEMD_DIR="/etc/systemd/system"
 SUDOERS_FILE="/etc/sudoers.d/vf-materials-bot-deploy"
 NGINX_SRC="deploy/nginx-mybot.conf"
@@ -119,6 +121,9 @@ sudoers_tmp="$(mktemp)"
     done
     echo "deploy_user ALL=(ALL) NOPASSWD: /usr/bin/journalctl"
     echo "deploy_user ALL=(ALL) NOPASSWD: $WORK_DIR/deploy/deploy.sh"
+    # Параллельная запись для нового каталога — на период переезда /opt/vf_materials_bot →
+    # /opt/vashfindir. После переезда оставить только выведенную из WORK_DIR строку выше.
+    echo "deploy_user ALL=(ALL) NOPASSWD: /opt/vashfindir/deploy/deploy.sh"
 } > "$sudoers_tmp"
 chmod 440 "$sudoers_tmp"
 visudo -cf "$sudoers_tmp" >/dev/null
