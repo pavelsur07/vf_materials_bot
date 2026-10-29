@@ -19,8 +19,8 @@ set -euo pipefail
 # Server-side edits of units/sudoers/nginx are overwritten on every deploy.
 # Change them in the repository instead — ручных правок на сервере не требуется.
 
-# Каталог репозитория берём из расположения скрипта, а не хардкодом: деплой
-# переживает переименование каталога на сервере (/opt/vf_materials_bot → /opt/vashfindir).
+# Каталог репозитория берём из расположения скрипта, а не хардкодом: так деплой
+# не зависит от абсолютного пути (каталог на сервере — /opt/vashfindir).
 WORK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SYSTEMD_DIR="/etc/systemd/system"
 SUDOERS_FILE="/etc/sudoers.d/vf-materials-bot-deploy"
@@ -121,9 +121,9 @@ sudoers_tmp="$(mktemp)"
     done
     echo "deploy_user ALL=(ALL) NOPASSWD: /usr/bin/journalctl"
     echo "deploy_user ALL=(ALL) NOPASSWD: $WORK_DIR/deploy/deploy.sh"
-    # Параллельная запись для нового каталога — на период переезда /opt/vf_materials_bot →
-    # /opt/vashfindir. После переезда оставить только выведенную из WORK_DIR строку выше.
-    echo "deploy_user ALL=(ALL) NOPASSWD: /opt/vashfindir/deploy/deploy.sh"
+    # Параллельная запись для старого каталога — убрать после того, как переезд
+    # /opt/vf_materials_bot → /opt/vashfindir состоится на всех серверах.
+    echo "deploy_user ALL=(ALL) NOPASSWD: /opt/vf_materials_bot/deploy/deploy.sh"
 } > "$sudoers_tmp"
 chmod 440 "$sudoers_tmp"
 visudo -cf "$sudoers_tmp" >/dev/null
@@ -166,7 +166,15 @@ fi
 # --- Код и данные ------------------------------------------------------------------
 
 log "Syncing dependencies..."
-uv sync
+# После переезда каталога (/opt/vf_materials_bot → /opt/vashfindir) shebang-скрипты
+# .venv/bin/* ссылаются на старый абсолютный путь. Проверяем на примере alembic:
+# сломано — пересобираем окружение целиком (деплой идёт от root, venv принадлежит root).
+if ! "$WORK_DIR/.venv/bin/alembic" --version &>/dev/null; then
+    log "Broken venv scripts detected (directory relocation), full reinstall..."
+    uv sync --reinstall
+else
+    uv sync
+fi
 
 log "Applying migrations..."
 uv run alembic upgrade head

@@ -8,7 +8,7 @@ SERVICE_NAME="vf-materials-bot"
 ADMIN_SERVICE_NAME="vf-materials-bot-admin"
 API_SERVICE_NAME="vf-materials-api"
 WORKER_SERVICE_NAME="vf-materials-worker"
-WORK_DIR="/opt/vf_materials_bot"
+WORK_DIR="/opt/vashfindir"
 REPO_URL="${1:-}"
 
 if [[ $EUID -ne 0 ]]; then

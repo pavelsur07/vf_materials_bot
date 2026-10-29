@@ -3,11 +3,11 @@ set -euo pipefail
 
 # One-time server-side setup for the admin panel (systemd unit, sudoers, nginx).
 # Run ON THE SERVER, after the code with bot/admin/ is deployed:
-#   sudo bash /opt/vf_materials_bot/deploy/setup-admin-server.sh
+#   sudo bash /opt/vashfindir/deploy/setup-admin-server.sh
 # Idempotent: safe to re-run.
 
 ADMIN_SERVICE_NAME="vf-materials-bot-admin"
-WORK_DIR="/opt/vf_materials_bot"
+WORK_DIR="/opt/vashfindir"
 NGINX_SITE="/etc/nginx/sites-available/mybots"
 SUDOERS_FILE="/etc/sudoers.d/vf-materials-bot-deploy"
 

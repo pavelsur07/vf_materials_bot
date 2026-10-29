@@ -6,7 +6,7 @@ set -euo pipefail
 
 SERVER_IP="109.73.204.179"
 DEPLOY_USER="deploy_user"
-WORK_DIR="/opt/vf_materials_bot"
+WORK_DIR="/opt/vashfindir"
 SERVICE_NAME="vf-materials-bot"
 ADMIN_SERVICE_NAME="vf-materials-bot-admin"
 LOCAL_ENV=".env"
