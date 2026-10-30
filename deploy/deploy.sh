@@ -121,9 +121,6 @@ sudoers_tmp="$(mktemp)"
     done
     echo "deploy_user ALL=(ALL) NOPASSWD: /usr/bin/journalctl"
     echo "deploy_user ALL=(ALL) NOPASSWD: $WORK_DIR/deploy/deploy.sh"
-    # Параллельная запись для старого каталога — убрать после того, как переезд
-    # /opt/vf_materials_bot → /opt/vashfindir состоится на всех серверах.
-    echo "deploy_user ALL=(ALL) NOPASSWD: /opt/vf_materials_bot/deploy/deploy.sh"
 } > "$sudoers_tmp"
 chmod 440 "$sudoers_tmp"
 visudo -cf "$sudoers_tmp" >/dev/null
