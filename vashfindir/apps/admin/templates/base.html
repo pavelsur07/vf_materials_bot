@@ -30,13 +30,49 @@
     .login-box button[type="submit"] { width: 100%; }
     .error { color: #b00020; }
     .ok { color: #1a7f37; }
+
+    /* Навигация разделов в виде компактных табов */
+    .header-tabs {
+      display: inline-flex;
+      gap: 0.25rem;
+      margin-left: 1rem;
+      vertical-align: middle;
+    }
+    .header-tab {
+      display: inline-flex;
+      align-items: center;
+      min-height: 2rem;
+      padding: 0.3rem 0.75rem;
+      border: 1px solid var(--pico-muted-border-color);
+      border-radius: var(--pico-border-radius);
+      color: var(--pico-muted-color);
+      text-decoration: none;
+    }
+    .header-tab:hover {
+      border-color: var(--pico-primary-border);
+      color: var(--pico-primary);
+    }
+    .header-tab.active,
+    .header-tab.active:hover {
+      background: var(--pico-primary-background);
+      border-color: var(--pico-primary-background);
+      color: var(--pico-primary-inverse);
+    }
   </style>
 </head>
 <body>
   <header class="container">
     <strong>«Ваш Финдир» — админка</strong>
     {% if request.session.get('admin_user') %}
-    <a href="/admin/slides" style="margin-left: 1rem;">Слайды</a>
+    {% set current_path = request.url.path %}
+    <nav class="header-tabs" aria-label="Разделы админки">
+      <a href="/admin/"
+         class="header-tab{% if current_path == '/admin/' %} active{% endif %}"
+         {% if current_path == '/admin/' %}aria-current="page"{% endif %}>Пользователи</a>
+      <a href="/admin/slides"
+         class="header-tab{% if current_path != '/admin/' and current_path.startswith('/admin/slides') %} active{% endif %}"
+         {% if current_path != '/admin/' and current_path.startswith('/admin/slides') %}aria-current="page"{% endif %}>Слайды</a>
+    </nav>
     <form class="inline" method="post" action="/admin/logout" style="display: inline; margin: 0 0 0 1rem; float: right;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <button type="submit" class="secondary" style="margin: 0;">Выйти</button>

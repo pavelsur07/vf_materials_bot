@@ -144,14 +144,27 @@ def test_slides_page_requires_auth(client: TestClient) -> None:
     assert response.headers["location"] == "/admin/login"
 
 
-def test_dashboard_has_slides_navigation(client: TestClient) -> None:
+def test_dashboard_has_active_users_tab(client: TestClient) -> None:
     _login(client)
 
     response = client.get("/admin/")
 
     assert response.status_code == 200
-    assert 'href="/admin/slides"' in response.text
+    assert 'class="header-tabs"' in response.text
+    assert re.search(r'href="/admin/"\s+class="header-tab active"', response.text)
+    assert re.search(r'href="/admin/slides"\s+class="header-tab"', response.text)
     assert "button.disabled = true;" in response.text
+
+
+def test_slides_page_has_active_slides_tab(client: TestClient) -> None:
+    _login(client)
+
+    response = client.get("/admin/slides")
+
+    assert response.status_code == 200
+    assert 'class="header-tabs"' in response.text
+    assert re.search(r'href="/admin/"\s+class="header-tab"', response.text)
+    assert re.search(r'href="/admin/slides"\s+class="header-tab active"', response.text)
 
 
 def test_slides_page_renders_form_and_empty_history(client: TestClient) -> None:
