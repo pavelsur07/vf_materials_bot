@@ -24,9 +24,11 @@ def main() -> None:
             "ADMIN_SECRET_KEY и ADMIN_PASSWORD_HASH должны быть заданы в .env. "
             "Хэш пароля: uv run python -m vashfindir.apps.admin.hashpw"
         )
+    telegram_bot = None
     lead_notify_use_case = None
     if settings.leads_chat_id:
-        telegram_adapter = TelegramChannelAdapter(Bot(settings.bot_token))
+        telegram_bot = Bot(settings.bot_token)
+        telegram_adapter = TelegramChannelAdapter(telegram_bot)
         lead_notify_use_case = NotifyLeadUseCase(settings, telegram_adapter)
     slide_generation_use_case = QueueSlideGenerationUseCase(
         default_slide_style(),
@@ -39,6 +41,7 @@ def main() -> None:
         create_session_factory(),
         lead_notify_use_case=lead_notify_use_case,
         slide_generation_use_case=slide_generation_use_case,
+        telegram_bot=telegram_bot,
     )
     uvicorn.run(app, host=settings.admin_host, port=settings.admin_port)
 

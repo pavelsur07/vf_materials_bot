@@ -11,8 +11,7 @@ from aiohttp import web
 from vashfindir.apps.bot.handlers import get_routers
 from vashfindir.apps.bot.middlewares.db import DbSessionMiddleware
 from vashfindir.apps.bot.middlewares.di import DiMiddleware
-from vashfindir.core.config import get_settings
-from vashfindir.core.container import Container
+from vashfindir.core.config import Settings, get_settings
 from vashfindir.core.glitchtip import init_glitchtip
 from vashfindir.db.session import create_session_factory
 from vashfindir.integrations.telegram import TelegramChannelAdapter
@@ -21,23 +20,12 @@ from vashfindir.modules.onboarding.use_cases import OnboardingUseCase
 logger = logging.getLogger(__name__)
 
 
-def _build_container(bot: Bot) -> Container:
-    settings = get_settings()
-    container = Container()
-    telegram_adapter = TelegramChannelAdapter(bot)
-    container.register(TelegramChannelAdapter, telegram_adapter)
-    container.register(
-        OnboardingUseCase,
-        OnboardingUseCase(settings, telegram_adapter),
-    )
-    return container
-
-
-def build_dispatcher(bot: Bot) -> Dispatcher:
+def build_dispatcher(bot: Bot, settings: Settings) -> Dispatcher:
     dp = Dispatcher(storage=MemoryStorage())
-    container = _build_container(bot)
+    telegram_adapter = TelegramChannelAdapter(bot)
+    onboarding_use_case = OnboardingUseCase(settings, telegram_adapter)
     dp.update.middleware(DbSessionMiddleware(create_session_factory()))
-    dp.update.middleware(DiMiddleware(container.resolve(OnboardingUseCase)))
+    dp.update.middleware(DiMiddleware(onboarding_use_case))
     for router in get_routers():
         dp.include_router(router)
     return dp
@@ -48,9 +36,7 @@ async def run_polling(bot: Bot, dp: Dispatcher) -> None:
     await dp.start_polling(bot)
 
 
-def run_webhook(bot: Bot, dp: Dispatcher) -> None:
-    settings = get_settings()
-
+def run_webhook(bot: Bot, dp: Dispatcher, settings: Settings) -> None:
     async def on_startup() -> None:
         await bot.set_webhook(settings.webhook_url, secret_token=settings.webhook_secret)
         logger.info("Webhook set: %s", settings.webhook_url)
@@ -78,9 +64,9 @@ def main() -> None:
     if not settings.bot_token:
         raise SystemExit("BOT_TOKEN не задан. Скопируйте .env.example в .env и впишите токен.")
     bot = Bot(settings.bot_token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
-    dp = build_dispatcher(bot)
+    dp = build_dispatcher(bot, settings)
     if settings.mode == "webhook":
-        run_webhook(bot, dp)
+        run_webhook(bot, dp, settings)
     else:
         asyncio.run(run_polling(bot, dp))
 

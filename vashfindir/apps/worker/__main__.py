@@ -11,6 +11,7 @@ from vashfindir.apps.worker.handlers import (
     HANDLERS,
     Handler,
     build_handlers,
+    recover_interrupted_work,
 )
 from vashfindir.core.config import Settings, get_settings
 from vashfindir.core.glitchtip import init_glitchtip
@@ -31,7 +32,9 @@ async def run_loop(
     handler_map = handlers or HANDLERS
 
     async with session_factory() as session:
-        await ensure_scheduled(session, DAILY_STATS, DAILY_STATS_INTERVAL)
+        await recover_interrupted_work(session)
+        async with session.begin():
+            await ensure_scheduled(session, DAILY_STATS, DAILY_STATS_INTERVAL)
 
     while not stop.is_set():
         async with session_factory() as session:

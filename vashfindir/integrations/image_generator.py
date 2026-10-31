@@ -10,7 +10,6 @@ from aiohttp import ClientSession, ClientTimeout
 from aiohttp.client_exceptions import ClientError
 
 from vashfindir.core.exceptions import IntegrationError
-from vashfindir.integrations.base import BaseIntegration
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +43,7 @@ class ImageGenerator(Protocol):
     ) -> GeneratedImage: ...
 
 
-class HttpImageGenerator(BaseIntegration):
+class HttpImageGenerator:
     """JSON-over-HTTP adapter for an image generation provider."""
 
     def __init__(

@@ -77,6 +77,22 @@ def test_healthz(client: TestClient) -> None:
     assert response.text == "ok"
 
 
+def test_telegram_bot_closed_on_shutdown(
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    telegram_bot = AsyncMock()
+    app = create_api_app(
+        Settings(_env_file=None),
+        session_factory,
+        telegram_bot=telegram_bot,
+    )
+
+    with TestClient(app, base_url="https://testserver"):
+        pass
+
+    telegram_bot.session.close.assert_awaited_once()
+
+
 def test_lead_notification_accepted_with_api_token(
     client: TestClient, adapter: TelegramChannelAdapter
 ) -> None:

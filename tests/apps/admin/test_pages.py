@@ -1,5 +1,6 @@
 import re
 from collections.abc import AsyncIterator, Generator
+from unittest.mock import AsyncMock
 
 import pytest
 import pytest_asyncio
@@ -110,3 +111,16 @@ def test_logout(client: TestClient) -> None:
     response = client.get("/admin/", follow_redirects=False)
     assert response.status_code == 303
     assert response.headers["location"] == "/admin/login"
+
+
+def test_telegram_bot_closed_on_shutdown(
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    telegram_bot = AsyncMock()
+    settings = Settings(admin_secret_key="test-secret-key", _env_file=None)
+    app = create_admin_app(settings, session_factory, telegram_bot=telegram_bot)
+
+    with TestClient(app, base_url="https://testserver"):
+        pass
+
+    telegram_bot.session.close.assert_awaited_once()

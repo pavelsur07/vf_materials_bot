@@ -1,5 +1,8 @@
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from pathlib import Path
 
+from aiogram import Bot
 from fastapi import FastAPI
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -20,8 +23,23 @@ def create_admin_app(
     session_factory: async_sessionmaker[AsyncSession],
     lead_notify_use_case: NotifyLeadUseCase | None = None,
     slide_generation_use_case: QueueSlideGenerationUseCase | None = None,
+    telegram_bot: Bot | None = None,
 ) -> FastAPI:
-    app = FastAPI(title="VF Admin", docs_url=None, redoc_url=None, openapi_url=None)
+    @asynccontextmanager
+    async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+        try:
+            yield
+        finally:
+            if telegram_bot is not None:
+                await telegram_bot.session.close()
+
+    app = FastAPI(
+        title="VF Admin",
+        docs_url=None,
+        redoc_url=None,
+        openapi_url=None,
+        lifespan=lifespan,
+    )
     app.state.settings = settings
     app.state.session_factory = session_factory
     app.state.templates = Jinja2Templates(directory=TEMPLATES_DIR)

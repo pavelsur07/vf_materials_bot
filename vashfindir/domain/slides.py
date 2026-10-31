@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from vashfindir.db.models import SlideGeneration
@@ -194,7 +194,7 @@ async def create_slide_generation(
         status=SlideGenerationStatus.QUEUED,
     )
     session.add(generation)
-    await session.commit()
+    await session.flush()
     return generation
 
 
@@ -251,3 +251,17 @@ async def mark_slide_generation_failed(
     generation.error = error[:4000]
     generation.finished_at = _utcnow()
     await session.commit()
+
+
+async def fail_interrupted_slide_generations(session: AsyncSession) -> int:
+    result = await session.scalars(
+        update(SlideGeneration)
+        .where(SlideGeneration.status == SlideGenerationStatus.GENERATING)
+        .values(
+            status=SlideGenerationStatus.FAILED,
+            error="worker restarted before slide generation completed",
+            finished_at=_utcnow(),
+        )
+        .returning(SlideGeneration.id)
+    )
+    return len(result.all())

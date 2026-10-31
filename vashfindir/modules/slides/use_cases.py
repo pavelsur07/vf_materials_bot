@@ -3,12 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from vashfindir.core.exceptions import UseCaseError
 from vashfindir.db.models import SlideGeneration
 from vashfindir.domain.jobs import enqueue_job
-from vashfindir.domain.slides import (
-    GENERATE_SLIDE_JOB_TYPE,
-    SlideStyle,
-    create_slide_generation,
-    mark_slide_generation_failed,
-)
+from vashfindir.domain.slides import GENERATE_SLIDE_JOB_TYPE, SlideStyle, create_slide_generation
 from vashfindir.modules.slides.dto import SlideGenerationRequest, SlideGenerationResult
 
 
@@ -53,23 +48,24 @@ class QueueSlideGenerationUseCase:
         author: str | None = None,
     ) -> SlideGeneration:
         prepared = self._prepare.execute(request)
-        generation = await create_slide_generation(
-            session,
-            plot=prepared.plot,
-            style_id=prepared.style_id,
-            style_version=prepared.style_version,
-            model=self._generation_model or prepared.model,
-            prompt=prepared.prompt,
-            negative_prompt=prepared.negative_prompt,
-            author=author,
-        )
         try:
+            generation = await create_slide_generation(
+                session,
+                plot=prepared.plot,
+                style_id=prepared.style_id,
+                style_version=prepared.style_version,
+                model=self._generation_model or prepared.model,
+                prompt=prepared.prompt,
+                negative_prompt=prepared.negative_prompt,
+                author=author,
+            )
             await enqueue_job(
                 session,
                 GENERATE_SLIDE_JOB_TYPE,
                 {"slide_generation_id": generation.id},
             )
+            await session.commit()
         except Exception as exc:
-            await mark_slide_generation_failed(session, generation, str(exc))
+            await session.rollback()
             raise UseCaseError("failed to queue slide generation") from exc
         return generation

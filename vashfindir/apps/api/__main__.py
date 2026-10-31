@@ -24,13 +24,20 @@ def main() -> None:
             "API_TOKEN (или LEAD_API_TOKEN) должен быть задан в .env. "
             "Сервис принимает оба заголовка: x-api-token и legacy x-lead-token."
         )
+    telegram_bot = None
     lead_notify_use_case = None
     if settings.leads_chat_id:
-        telegram_adapter = TelegramChannelAdapter(Bot(settings.bot_token))
+        telegram_bot = Bot(settings.bot_token)
+        telegram_adapter = TelegramChannelAdapter(telegram_bot)
         lead_notify_use_case = NotifyLeadUseCase(settings, telegram_adapter)
     else:
         logger.warning("LEADS_CHAT_ID не задан: POST /api/leads будет отвечать 503")
-    app = create_api_app(settings, create_session_factory(), lead_notify_use_case)
+    app = create_api_app(
+        settings,
+        create_session_factory(),
+        lead_notify_use_case,
+        telegram_bot=telegram_bot,
+    )
     uvicorn.run(app, host=settings.api_host, port=settings.api_port)
 
 

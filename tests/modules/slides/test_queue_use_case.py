@@ -74,3 +74,26 @@ async def test_configured_provider_model_is_saved_instead_of_style_model(
     )
 
     assert generation.model == "gpt-image-2.5-flare"
+
+
+async def test_rolls_back_generation_when_job_enqueue_fails(
+    session: AsyncSession,
+    use_case: QueueSlideGenerationUseCase,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def fail_enqueue(*args: object, **kwargs: object) -> None:
+        raise RuntimeError("queue unavailable")
+
+    monkeypatch.setattr(
+        "vashfindir.modules.slides.use_cases.enqueue_job",
+        fail_enqueue,
+    )
+
+    with pytest.raises(UseCaseError, match="failed to queue"):
+        await use_case.execute(
+            session,
+            SlideGenerationRequest(plot="Сюжет для тестовой генерации"),
+        )
+
+    assert await session.scalar(select(func.count()).select_from(SlideGeneration)) == 0
+    assert await session.scalar(select(func.count()).select_from(Job)) == 0

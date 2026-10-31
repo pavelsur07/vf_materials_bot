@@ -34,7 +34,7 @@ async def enqueue_job(
         run_at=run_at or utcnow(),
     )
     session.add(job)
-    await session.commit()
+    await session.flush()
     return job
 
 
@@ -94,3 +94,16 @@ async def fail_job(session: AsyncSession, job: Job, error: str) -> None:
         update(Job).where(Job.id == job.id).values(status=JobStatus.FAILED, last_error=error[:4000])
     )
     await session.commit()
+
+
+async def fail_interrupted_jobs(session: AsyncSession) -> int:
+    result = await session.scalars(
+        update(Job)
+        .where(Job.status == JobStatus.RUNNING)
+        .values(
+            status=JobStatus.FAILED,
+            last_error="worker restarted before job completion",
+        )
+        .returning(Job.id)
+    )
+    return len(result.all())

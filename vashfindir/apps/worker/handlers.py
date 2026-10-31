@@ -8,12 +8,13 @@ from pathlib import Path
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from vashfindir.db.models import Job
-from vashfindir.domain.jobs import enqueue_job, utcnow
+from vashfindir.domain.jobs import enqueue_job, fail_interrupted_jobs, utcnow
 from vashfindir.domain.slide_images import normalize_slide_png
 from vashfindir.domain.slides import (
     GENERATE_SLIDE_JOB_TYPE,
     SLIDE_HEIGHT,
     SLIDE_WIDTH,
+    fail_interrupted_slide_generations,
     get_original_slide_path,
     get_result_slide_path,
     get_slide_generation,
@@ -33,12 +34,25 @@ DAILY_STATS_INTERVAL = timedelta(days=1)
 Handler = Callable[[Job, AsyncSession], Awaitable[None]]
 
 
+async def recover_interrupted_work(session: AsyncSession) -> None:
+    async with session.begin():
+        jobs = await fail_interrupted_jobs(session)
+        generations = await fail_interrupted_slide_generations(session)
+    if jobs or generations:
+        logger.warning(
+            "Marked interrupted work as failed: jobs=%s, slide_generations=%s",
+            jobs,
+            generations,
+        )
+
+
 async def _daily_stats(job: Job, session: AsyncSession) -> None:
-    total = await count_users(session)
-    logger.info("daily_stats: users=%s", total)
-    # Сама задача ставит следующий запуск: текущая в статусе running,
-    # поэтому ensure_scheduled здесь не подошёл бы.
-    await enqueue_job(session, DAILY_STATS, run_at=utcnow() + DAILY_STATS_INTERVAL)
+    async with session.begin():
+        total = await count_users(session)
+        logger.info("daily_stats: users=%s", total)
+        # Сама задача ставит следующий запуск: текущая в статусе running,
+        # поэтому ensure_scheduled здесь не подошёл бы.
+        await enqueue_job(session, DAILY_STATS, run_at=utcnow() + DAILY_STATS_INTERVAL)
 
 
 def _slide_generation_id(job: Job) -> int:

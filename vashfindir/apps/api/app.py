@@ -1,5 +1,8 @@
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from pathlib import Path
 
+from aiogram import Bot
 from fastapi import FastAPI
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -21,7 +24,16 @@ def create_api_app(
     settings: Settings,
     session_factory: async_sessionmaker[AsyncSession],
     lead_notify_use_case: NotifyLeadUseCase | None = None,
+    telegram_bot: Bot | None = None,
 ) -> FastAPI:
+    @asynccontextmanager
+    async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+        try:
+            yield
+        finally:
+            if telegram_bot is not None:
+                await telegram_bot.session.close()
+
     # Пустой api_docs_path — docs выключены; иначе Swagger UI живёт ровно на этом
     # пути, ReDoc и openapi.json — под ним. nginx закрывает ветку basic auth'ом.
     raw_docs_path = settings.api_docs_path.strip().strip("/")
@@ -34,6 +46,7 @@ def create_api_app(
         docs_url=docs_root or None,
         redoc_url=f"{docs_root}/redoc" if docs_root else None,
         openapi_url=f"{docs_root}/openapi.json" if docs_root else None,
+        lifespan=lifespan,
     )
     app.state.settings = settings
     app.state.session_factory = session_factory

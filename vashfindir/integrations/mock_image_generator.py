@@ -2,7 +2,6 @@ import asyncio
 import base64
 from pathlib import Path
 
-from vashfindir.integrations.base import BaseIntegration
 from vashfindir.integrations.image_generator import GeneratedImage, ImageGenerationError
 
 DEFAULT_MOCK_IMAGE = base64.b64decode(
@@ -10,7 +9,7 @@ DEFAULT_MOCK_IMAGE = base64.b64decode(
 )
 
 
-class MockImageGenerator(BaseIntegration):
+class MockImageGenerator:
     """Deterministic generator used before a real provider is configured."""
 
     def __init__(
