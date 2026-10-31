@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Генерация слайдов — админка «Ваш Финдир»{% endblock %}
+{% block content %}
+<p><a href="/admin/">← Пользователи</a></p>
+<h1>Генерация слайдов</h1>
+
+{% if created_message %}<p class="ok">{{ created_message }}</p>{% endif %}
+{% if invalid_plot %}<p class="error">{{ invalid_plot_message }}</p>{% endif %}
+{% if request.query_params.get('disabled') == '1' %}
+<p class="error">{{ disabled_message }}</p>
+{% endif %}
+
+{% if slide_generation_enabled %}
+<form method="post" action="/admin/slides">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label>
+    Сюжет изображения
+    <textarea name="plot" rows="5" minlength="10" maxlength="1000" required
+              placeholder="Например: финансовый директор анализирует падение выручки компании"></textarea>
+  </label>
+  <button type="submit">Сгенерировать</button>
+</form>
+{% endif %}
+
+<h2>История генераций</h2>
+{% if generations %}
+<table>
+  <thead>
+    <tr><th>ID</th><th>Статус</th><th>Сюжет</th><th>Создана</th></tr>
+  </thead>
+  <tbody>
+    {% for generation in generations %}
+    <tr>
+      <td><a href="/admin/slides/{{ generation.id }}">#{{ generation.id }}</a></td>
+      <td>
+        <span class="{{ 'ok' if generation.status == 'ready' else 'error' if generation.status == 'failed' else '' }}">
+          {{ status_labels.get(generation.status, generation.status) }}
+        </span>
+      </td>
+      <td>{{ generation.plot|truncate(90) }}</td>
+      <td>{{ generation.created_at.strftime('%Y-%m-%d %H:%M') if generation.created_at else '—' }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p>Пока нет генераций.</p>
+{% endif %}
+{% endblock %}

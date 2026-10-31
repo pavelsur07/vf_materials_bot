@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Генерация №{{ generation.id }} — админка «Ваш Финдир»{% endblock %}
+{% block content %}
+<p><a href="/admin/slides">← Все генерации</a></p>
+<h1>Генерация №{{ generation.id }}</h1>
+
+{% if created_message %}<p class="ok">{{ created_message }}</p>{% endif %}
+{% if invalid_plot %}<p class="error">{{ invalid_plot_message }}</p>{% endif %}
+<p><a href="/admin/slides/{{ generation.id }}">Обновить статус</a></p>
+
+<table>
+  <tbody>
+    <tr>
+      <th>Статус</th>
+      <td>
+        <span class="{{ 'ok' if generation.status == 'ready' else 'error' if generation.status == 'failed' else '' }}">
+          {{ status_labels.get(generation.status, generation.status) }}
+        </span>
+      </td>
+    </tr>
+    <tr><th>Сюжет</th><td style="white-space: pre-wrap;">{{ generation.plot }}</td></tr>
+    <tr><th>Стиль</th><td>{{ generation.style_id }} v{{ generation.style_version }}</td></tr>
+    <tr><th>Модель</th><td>{{ generation.model }}</td></tr>
+    <tr><th>Запрос провайдера</th><td>{{ generation.provider_request_id or '—' }}</td></tr>
+    <tr><th>Создана</th><td>{{ generation.created_at.strftime('%Y-%m-%d %H:%M:%S') if generation.created_at else '—' }}</td></tr>
+    <tr><th>Начата</th><td>{{ generation.started_at.strftime('%Y-%m-%d %H:%M:%S') if generation.started_at else '—' }}</td></tr>
+    <tr><th>Завершена</th><td>{{ generation.finished_at.strftime('%Y-%m-%d %H:%M:%S') if generation.finished_at else '—' }}</td></tr>
+    {% if generation.error %}
+    <tr><th>Ошибка</th><td class="error" style="white-space: pre-wrap;">{{ generation.error }}</td></tr>
+    {% endif %}
+  </tbody>
+</table>
+
+{% if generation.status == 'ready' %}
+<h2>Результат</h2>
+<p>
+  <img src="/admin/slides/{{ generation.id }}/download" alt="Сгенерированный слайд"
+       style="max-width: 320px; width: 100%; display: block; border: 1px solid var(--pico-muted-border-color);">
+</p>
+<p><a href="/admin/slides/{{ generation.id }}/download" download>Скачать PNG</a></p>
+{% endif %}
+
+{% if slide_generation_enabled %}
+<form method="post" action="/admin/slides/{{ generation.id }}/retry" style="margin-top: 1rem;">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <button type="submit" class="secondary">Сгенерировать ещё раз</button>
+</form>
+{% endif %}
+{% endblock %}

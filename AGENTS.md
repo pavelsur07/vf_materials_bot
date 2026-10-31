@@ -18,6 +18,7 @@
 - uv — управление зависимостями и окружением (никакого pip/poetry)
 - ruff — линтер и форматтер, mypy — строгая типизация
 - pytest + pytest-asyncio — тесты
+- Pillow (PIL) — чтение, валидация и нормализация PNG-изображений
 - sentry-sdk — отправка ошибок в GlitchTip/Sentry
 - FastAPI + uvicorn + Jinja2 — веб-сервисы (`vashfindir/apps/admin/`,
   `vashfindir/apps/api/`, отдельные процессы)

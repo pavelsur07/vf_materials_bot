@@ -1,0 +1,33 @@
+{
+  "id": "style_01",
+  "name": "Style 01",
+  "version": 1,
+  "enabled": true,
+  "description": "Test visual style for the MVP slide generator.",
+  "output": {
+    "format": "png",
+    "width": 1080,
+    "height": 1350
+  },
+  "generation": {
+    "model": "mock-model",
+    "aspect_ratio": "4:5",
+    "seed": null,
+    "quality": "high"
+  },
+  "prompt_template": {
+    "subject_placeholder": "{plot}",
+    "style": "modern editorial illustration, clean composition, soft cinematic lighting, premium business visual, calm and trustworthy atmosphere",
+    "composition": "centered subject with negative space around it, portrait orientation, no visible text areas",
+    "palette": "deep navy blue, warm ivory, muted gold accents",
+    "detail_level": "highly detailed but uncluttered"
+  },
+  "negative_prompt": "text, letters, words, typography, watermark, logo, signature, UI elements, cropped subject, blurry, low quality, oversaturated, harsh shadows",
+  "postprocessing": {
+    "target_width": 1080,
+    "target_height": 1350,
+    "allow_crop": true,
+    "allow_resize": true,
+    "strip_metadata": true
+  }
+}

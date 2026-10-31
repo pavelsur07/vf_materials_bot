@@ -36,7 +36,8 @@
   <header class="container">
     <strong>«Ваш Финдир» — админка</strong>
     {% if request.session.get('admin_user') %}
-    <form class="inline" method="post" action="/admin/logout" style="display: inline; margin: 0;">
+    <a href="/admin/slides" style="margin-left: 1rem;">Слайды</a>
+    <form class="inline" method="post" action="/admin/logout" style="display: inline; margin: 0 0 0 1rem; float: right;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <button type="submit" class="secondary" style="margin: 0;">Выйти</button>
     </form>

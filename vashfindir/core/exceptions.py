@@ -16,3 +16,7 @@ class KnowledgeBaseError(BotError):
 
 class UseCaseError(BotError):
     """Raised when a use case scenario cannot be completed."""
+
+
+class SlideImageError(BotError):
+    """Raised when a slide image cannot be validated or normalized."""

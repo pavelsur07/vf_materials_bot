@@ -7,8 +7,10 @@ from vashfindir.apps.admin.app import create_admin_app
 from vashfindir.core.config import get_settings
 from vashfindir.core.glitchtip import init_glitchtip
 from vashfindir.db.session import create_session_factory
+from vashfindir.domain.slides import default_slide_style
 from vashfindir.integrations.telegram import TelegramChannelAdapter
 from vashfindir.modules.leads.use_cases import NotifyLeadUseCase
+from vashfindir.modules.slides.use_cases import QueueSlideGenerationUseCase
 
 
 def main() -> None:
@@ -26,7 +28,18 @@ def main() -> None:
     if settings.leads_chat_id:
         telegram_adapter = TelegramChannelAdapter(Bot(settings.bot_token))
         lead_notify_use_case = NotifyLeadUseCase(settings, telegram_adapter)
-    app = create_admin_app(settings, create_session_factory(), lead_notify_use_case)
+    slide_generation_use_case = QueueSlideGenerationUseCase(
+        default_slide_style(),
+        generation_model=settings.image_provider_model
+        if settings.image_provider_configured
+        else None,
+    )
+    app = create_admin_app(
+        settings,
+        create_session_factory(),
+        lead_notify_use_case=lead_notify_use_case,
+        slide_generation_use_case=slide_generation_use_case,
+    )
     uvicorn.run(app, host=settings.admin_host, port=settings.admin_port)
 
 

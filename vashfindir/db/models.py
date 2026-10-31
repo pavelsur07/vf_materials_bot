@@ -31,3 +31,26 @@ class Job(Base):
     run_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     last_error: Mapped[str | None] = mapped_column(Text)
+
+
+class SlideGeneration(Base):
+    """One requested slide image and its lifecycle metadata."""
+
+    __tablename__ = "slide_generations"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    plot: Mapped[str] = mapped_column(Text)
+    style_id: Mapped[str] = mapped_column(String(32), default="style_01", index=True)
+    style_version: Mapped[int]
+    model: Mapped[str] = mapped_column(String(128))
+    prompt: Mapped[str] = mapped_column(Text)
+    negative_prompt: Mapped[str] = mapped_column(Text)
+    provider_request_id: Mapped[str | None] = mapped_column(String(128))
+    status: Mapped[str] = mapped_column(String(16), default="queued", index=True)
+    original_path: Mapped[str | None] = mapped_column(Text)
+    image_path: Mapped[str | None] = mapped_column(Text)
+    error: Mapped[str | None] = mapped_column(Text)
+    author: Mapped[str | None] = mapped_column(String(64))
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

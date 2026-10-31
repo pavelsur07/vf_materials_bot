@@ -6,6 +6,7 @@ __pycache__/
 *.db-journal
 *.db-wal
 *.db-shm
+data/generated/
 .idea/
 .pytest_cache/
 .mypy_cache/

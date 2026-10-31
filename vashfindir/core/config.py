@@ -45,6 +45,14 @@ class Settings(BaseSettings):
     # Фоновый воркер (python -m vashfindir.apps.worker): забирает задачи из очереди jobs
     worker_enabled: bool = False
 
+    # Генерация изображений слайдов; пустые URL и ключ включают mock-режим
+    image_provider_url: str = ""
+    image_provider_api_key: str = ""
+    image_provider_model: str = Field(default="gpt-image-2.5-flare", min_length=1)
+    image_provider_timeout_seconds: float = Field(default=120.0, gt=0)
+    image_provider_retry_attempts: int = Field(default=2, ge=1, le=5)
+    image_provider_retry_backoff_seconds: float = Field(default=1.0, ge=0)
+
     database_url: str = "sqlite+aiosqlite:///./data/vf_materials_bot.db"
 
     glitchtip_dsn: str = ""
@@ -54,6 +62,10 @@ class Settings(BaseSettings):
     @property
     def webhook_url(self) -> str:
         return f"{self.webhook_host.rstrip('/')}{self.webhook_path}"
+
+    @property
+    def image_provider_configured(self) -> bool:
+        return bool(self.image_provider_url.strip() and self.image_provider_api_key.strip())
 
     @field_validator("leads_chat_id", "leads_topic_id", mode="before")
     @classmethod

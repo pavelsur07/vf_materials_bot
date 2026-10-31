@@ -3,19 +3,32 @@ import contextlib
 import logging
 import signal
 
-from vashfindir.apps.worker.handlers import DAILY_STATS, DAILY_STATS_INTERVAL, HANDLERS
-from vashfindir.core.config import get_settings
+from aiohttp import ClientSession
+
+from vashfindir.apps.worker.handlers import (
+    DAILY_STATS,
+    DAILY_STATS_INTERVAL,
+    HANDLERS,
+    Handler,
+    build_handlers,
+)
+from vashfindir.core.config import Settings, get_settings
 from vashfindir.core.glitchtip import init_glitchtip
 from vashfindir.db.session import create_session_factory
 from vashfindir.domain.jobs import claim_due_job, complete_job, ensure_scheduled, fail_job
+from vashfindir.integrations.image_generator_factory import create_image_generator
 
 logger = logging.getLogger(__name__)
 
 POLL_INTERVAL_SECONDS = 5.0
 
 
-async def run_loop(stop: asyncio.Event) -> None:
+async def run_loop(
+    stop: asyncio.Event,
+    handlers: dict[str, Handler] | None = None,
+) -> None:
     session_factory = create_session_factory()
+    handler_map = handlers or HANDLERS
 
     async with session_factory() as session:
         await ensure_scheduled(session, DAILY_STATS, DAILY_STATS_INTERVAL)
@@ -27,7 +40,7 @@ async def run_loop(stop: asyncio.Event) -> None:
             await asyncio.sleep(POLL_INTERVAL_SECONDS)
             continue
 
-        handler = HANDLERS.get(job.type)
+        handler = handler_map.get(job.type)
         if handler is None:
             logger.error("Job %s: unknown type %r", job.id, job.type)
             async with session_factory() as session:
@@ -46,10 +59,12 @@ async def run_loop(stop: asyncio.Event) -> None:
                 await complete_job(session, job)
 
 
-async def _run() -> None:
+async def _run(settings: Settings) -> None:
     stop = asyncio.Event()
     asyncio.get_running_loop().add_signal_handler(signal.SIGTERM, stop.set)
-    await run_loop(stop)
+    async with ClientSession() as http_session:
+        image_generator = create_image_generator(settings, http_session)
+        await run_loop(stop, build_handlers(image_generator))
 
 
 def main() -> None:
@@ -62,7 +77,7 @@ def main() -> None:
         logger.info("WORKER_ENABLED не включён в .env — воркер не запущен")
         return
     with contextlib.suppress(KeyboardInterrupt):
-        asyncio.run(_run())
+        asyncio.run(_run(settings))
 
 
 if __name__ == "__main__":

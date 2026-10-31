@@ -7,9 +7,10 @@ from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import PlainTextResponse
 
 from vashfindir.apps.admin.auth import AuthMiddleware
-from vashfindir.apps.admin.routes import auth_pages, leads, pages
+from vashfindir.apps.admin.routes import auth_pages, leads, pages, slides
 from vashfindir.core.config import Settings
 from vashfindir.modules.leads.use_cases import NotifyLeadUseCase
+from vashfindir.modules.slides.use_cases import QueueSlideGenerationUseCase
 
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 
@@ -18,12 +19,14 @@ def create_admin_app(
     settings: Settings,
     session_factory: async_sessionmaker[AsyncSession],
     lead_notify_use_case: NotifyLeadUseCase | None = None,
+    slide_generation_use_case: QueueSlideGenerationUseCase | None = None,
 ) -> FastAPI:
     app = FastAPI(title="VF Admin", docs_url=None, redoc_url=None, openapi_url=None)
     app.state.settings = settings
     app.state.session_factory = session_factory
     app.state.templates = Jinja2Templates(directory=TEMPLATES_DIR)
     app.state.lead_notify_use_case = lead_notify_use_case
+    app.state.slide_generation_use_case = slide_generation_use_case
 
     # Starlette runs the last added middleware first, so SessionMiddleware
     # wraps AuthMiddleware and request.session is already populated there.
@@ -38,6 +41,7 @@ def create_admin_app(
     app.include_router(auth_pages.router)
     app.include_router(pages.router)
     app.include_router(leads.router)
+    app.include_router(slides.router)
 
     @app.get("/admin/health")
     async def health() -> PlainTextResponse:
