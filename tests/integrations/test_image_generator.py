@@ -376,8 +376,26 @@ async def test_openai_adapter_builds_compatible_request(
         "size": expected_size,
         "quality": "high",
         "output_format": "png",
-        "response_format": "b64_json",
     }
+
+
+def test_openai_adapter_keeps_response_format_for_legacy_models() -> None:
+    adapter = OpenAICompatibleImageGenerator(
+        cast(ClientSession, _FakeSession()),
+        url="https://api.openai.example/v1/images/generations",
+        api_key="secret-key",
+        timeout_seconds=120,
+    )
+
+    payload = adapter._build_payload(
+        prompt="prompt",
+        negative_prompt="negative",
+        model="dall-e-3",
+        width=1024,
+        height=1024,
+    )
+
+    assert payload["response_format"] == "b64_json"
 
 
 async def test_minirouter_adapter_uses_model_specific_controls() -> None:

@@ -18,15 +18,17 @@ class OpenAICompatibleImageGenerator(HttpImageGenerator):
         full_prompt = prompt
         if negative_prompt.strip():
             full_prompt = f"{prompt}\nAvoid: {negative_prompt}"
-        return {
+        payload: dict[str, Any] = {
             "model": model,
             "prompt": full_prompt,
             "n": 1,
             "size": self._openai_size(width, height),
             "quality": "high",
             "output_format": "png",
-            "response_format": "b64_json",
         }
+        if not model.startswith("gpt-image-"):
+            payload["response_format"] = "b64_json"
+        return payload
 
     @staticmethod
     def _openai_size(width: int, height: int) -> str:
