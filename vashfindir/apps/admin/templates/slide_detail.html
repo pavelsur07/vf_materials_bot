@@ -1,23 +1,29 @@
 {% extends "base.html" %}
 {% block title %}Генерация №{{ generation.id }} — админка «Ваш Финдир»{% endblock %}
 {% block content %}
+{% set status_label = status_labels.get(generation.status, generation.status) %}
+{% set status_description = status_descriptions.get(generation.status, '') %}
+{% set status_class = 'ok' if generation.status == 'ready' else 'error' if generation.status == 'failed' else '' %}
+
 <p><a href="/admin/slides">← Все генерации</a></p>
 <h1>Генерация №{{ generation.id }}</h1>
 
 {% if created_message %}<p class="ok">{{ created_message }}</p>{% endif %}
 {% if invalid_plot %}<p class="error">{{ invalid_plot_message }}</p>{% endif %}
-<p><a href="/admin/slides/{{ generation.id }}">Обновить статус</a></p>
+{% if already_running %}<p class="error">{{ already_running_message }}</p>{% endif %}
+
+<div style="border: 1px solid var(--pico-muted-border-color); border-radius: var(--pico-border-radius); padding: 0.75rem; margin-bottom: 1rem;">
+  <strong class="{{ status_class }}" style="display: block; margin-bottom: 0.25rem;">{{ status_label }}</strong>
+  <div>{{ status_description }}</div>
+  {% if generation_is_active %}
+  <small>Страница обновится автоматически, как только статус изменится.</small>
+  {% endif %}
+</div>
+
+<p><a href="/admin/slides/{{ generation.id }}">Обновить статус вручную</a></p>
 
 <table>
   <tbody>
-    <tr>
-      <th>Статус</th>
-      <td>
-        <span class="{{ 'ok' if generation.status == 'ready' else 'error' if generation.status == 'failed' else '' }}">
-          {{ status_labels.get(generation.status, generation.status) }}
-        </span>
-      </td>
-    </tr>
     <tr><th>Сюжет</th><td style="white-space: pre-wrap;">{{ generation.plot }}</td></tr>
     <tr><th>Стиль</th><td>{{ generation.style_id }} v{{ generation.style_version }}</td></tr>
     <tr><th>Модель</th><td>{{ generation.model }}</td></tr>
@@ -40,10 +46,18 @@
 <p><a href="/admin/slides/{{ generation.id }}/download" download>Скачать PNG</a></p>
 {% endif %}
 
-{% if slide_generation_enabled %}
+{% if slide_generation_enabled and generation.status in ['ready', 'failed'] %}
 <form method="post" action="/admin/slides/{{ generation.id }}/retry" style="margin-top: 1rem;">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <button type="submit" class="secondary">Сгенерировать ещё раз</button>
 </form>
+{% elif generation_is_active %}
+<p style="margin-top: 1rem;">Генерация уже выполняется. Повторный запуск будет доступен после завершения.</p>
+{% endif %}
+
+{% if generation_is_active %}
+<script>
+  setTimeout(() => window.location.reload(), 5000);
+</script>
 {% endif %}
 {% endblock %}

@@ -46,5 +46,16 @@
   <main class="container">
     {% block content %}{% endblock %}
   </main>
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      document.querySelectorAll("form").forEach((form) => {
+        form.addEventListener("submit", () => {
+          form.querySelectorAll("button[type='submit']").forEach((button) => {
+            button.disabled = true;
+          });
+        });
+      });
+    });
+  </script>
 </body>
 </html>

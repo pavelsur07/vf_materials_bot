@@ -151,6 +151,7 @@ def test_dashboard_has_slides_navigation(client: TestClient) -> None:
 
     assert response.status_code == 200
     assert 'href="/admin/slides"' in response.text
+    assert "button.disabled = true;" in response.text
 
 
 def test_slides_page_renders_form_and_empty_history(client: TestClient) -> None:
@@ -182,7 +183,14 @@ def test_create_generation_queues_job_and_redirects_to_detail(client: TestClient
     assert "Генерация №1" in detail.text
     assert PLOT in detail.text
     assert "В очереди" in detail.text
-    assert "Сгенерировать ещё раз" in detail.text
+    assert "Задача создана и ждёт запуска worker." in detail.text
+    assert "Страница обновится автоматически" in detail.text
+    assert "setTimeout(() => window.location.reload(), 5000);" in detail.text
+    assert (
+        "Генерация уже выполняется. Повторный запуск будет доступен после завершения."
+        in detail.text
+    )
+    assert "Сгенерировать ещё раз" not in detail.text
 
     history = client.get("/admin/slides")
     assert "В очереди" in history.text
@@ -222,7 +230,26 @@ def test_detail_page_returns_404_for_unknown_generation(client: TestClient) -> N
     assert response.status_code == 404
 
 
-def test_retry_creates_new_generation(client: TestClient) -> None:
+def test_retry_creates_new_generation(ready_client: TestClient) -> None:
+    _login(ready_client)
+
+    detail = ready_client.get("/admin/slides/1")
+    retry_csrf = _extract_csrf(detail.text)
+    response = ready_client.post(
+        "/admin/slides/1/retry",
+        data={"csrf_token": retry_csrf},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/admin/slides/2?created=1"
+    new_detail = ready_client.get("/admin/slides/2")
+    assert "Генерация №2" in new_detail.text
+    assert PLOT in new_detail.text
+    assert "Сгенерировать ещё раз" not in new_detail.text
+
+
+def test_retry_is_rejected_while_generation_is_active(client: TestClient) -> None:
     _login(client)
     create_csrf = _extract_csrf(client.get("/admin/slides").text)
     created = client.post(
@@ -241,10 +268,10 @@ def test_retry_creates_new_generation(client: TestClient) -> None:
     )
 
     assert response.status_code == 303
-    assert response.headers["location"] == "/admin/slides/2?created=1"
-    new_detail = client.get("/admin/slides/2")
-    assert "Генерация №2" in new_detail.text
-    assert PLOT in new_detail.text
+    assert response.headers["location"] == "/admin/slides/1?already_running=1"
+    detail = client.get("/admin/slides/1?already_running=1")
+    assert "Генерация уже выполняется. Дождитесь завершения." in detail.text
+    assert "Сгенерировать ещё раз" not in detail.text
 
 
 def test_retry_requires_csrf(client: TestClient) -> None:
@@ -263,9 +290,12 @@ def test_ready_page_shows_result_and_downloads_png(ready_client: TestClient) -> 
     detail = ready_client.get("/admin/slides/1")
     assert detail.status_code == 200
     assert "Готово" in detail.text
+    assert "Изображение готово и доступно для скачивания." in detail.text
     assert "provider-1" in detail.text
     assert "Скачать PNG" in detail.text
     assert 'src="/admin/slides/1/download"' in detail.text
+    assert "Сгенерировать ещё раз" in detail.text
+    assert "window.location.reload()" not in detail.text
 
     download = ready_client.get("/admin/slides/1/download")
     assert download.status_code == 200

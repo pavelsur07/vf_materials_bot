@@ -14,7 +14,9 @@ from vashfindir.domain.slides import (
     list_slide_generations,
 )
 from vashfindir.modules.slides.dialogs import (
+    GENERATION_ALREADY_RUNNING_MESSAGE,
     INVALID_PLOT_MESSAGE,
+    SLIDE_STATUS_DESCRIPTIONS,
     SLIDE_STATUS_LABELS,
     SLIDES_DISABLED_MESSAGE,
     generation_queued_message,
@@ -23,6 +25,8 @@ from vashfindir.modules.slides.dto import SlideGenerationRequest
 from vashfindir.modules.slides.use_cases import QueueSlideGenerationUseCase
 
 router = APIRouter(prefix="/admin/slides")
+
+_ACTIVE_STATUSES = {SlideGenerationStatus.QUEUED, SlideGenerationStatus.GENERATING}
 
 
 def _slide_generation_use_case(request: Request) -> QueueSlideGenerationUseCase | None:
@@ -113,12 +117,16 @@ async def slide_generation_page(
             "csrf_token": issue_csrf_token(request),
             "generation": generation,
             "status_labels": SLIDE_STATUS_LABELS,
+            "status_descriptions": SLIDE_STATUS_DESCRIPTIONS,
+            "generation_is_active": generation.status in _ACTIVE_STATUSES,
             "slide_generation_enabled": _slide_generation_use_case(request) is not None,
             "created_message": (
                 generation_queued_message(created_id) if created_id is not None else None
             ),
             "invalid_plot": request.query_params.get("invalid_plot") == "1",
             "invalid_plot_message": INVALID_PLOT_MESSAGE,
+            "already_running": request.query_params.get("already_running") == "1",
+            "already_running_message": GENERATION_ALREADY_RUNNING_MESSAGE,
             "disabled_message": SLIDES_DISABLED_MESSAGE,
         },
     )
@@ -138,6 +146,11 @@ async def retry_slide_generation(
     generation = await get_slide_generation(session, generation_id)
     if generation is None:
         raise HTTPException(status_code=404, detail="Slide generation not found")
+    if generation.status in _ACTIVE_STATUSES:
+        return RedirectResponse(
+            url=f"/admin/slides/{generation.id}?already_running=1",
+            status_code=303,
+        )
 
     try:
         data = SlideGenerationRequest(plot=generation.plot)
