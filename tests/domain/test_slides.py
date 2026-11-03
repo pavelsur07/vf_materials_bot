@@ -18,7 +18,7 @@ def test_default_style_matches_mvp_contract() -> None:
     style = default_slide_style()
 
     assert style.id == "style_01"
-    assert style.version == 1
+    assert style.version == 2
     assert style.enabled is True
     assert style.output.format == "png"
     assert style.output.width == SLIDE_WIDTH
@@ -35,8 +35,11 @@ def test_build_prompt_renders_plot_without_placeholder() -> None:
 
     assert f"Visual subject: {plot}" in prompt
     assert "{plot}" not in prompt
-    assert "Style: modern editorial illustration" in prompt
-    assert "Palette: deep navy blue, warm ivory, muted gold accents" in prompt
+    assert "2D cartoon illustration" in prompt
+    assert "near-white faces" in prompt
+    assert "Saturated red #C9002B" in prompt
+    assert "soft cinematic lighting" not in prompt
+    assert "warm ivory, muted gold" not in prompt
 
 
 def test_prompt_template_requires_plot_placeholder() -> None:

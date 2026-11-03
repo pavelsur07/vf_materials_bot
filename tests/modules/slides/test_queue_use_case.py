@@ -31,7 +31,7 @@ async def test_creates_generation_and_enqueues_worker_job(
     assert generation.status == "queued"
     assert generation.plot == request.plot
     assert generation.style_id == "style_01"
-    assert generation.style_version == 1
+    assert generation.style_version == 2
     assert generation.author == "admin"
     assert "Visual subject:" in generation.prompt
 

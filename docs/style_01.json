@@ -1,9 +1,9 @@
 {
   "id": "style_01",
-  "name": "Style 01",
-  "version": 1,
+  "name": "Стиль 1",
+  "version": 2,
   "enabled": true,
-  "description": "Test visual style for the MVP slide generator.",
+  "description": "Light cool-toned business 2D illustration based on foto-1.png and foto-4.png: dark navy contours, simplified pale faces and local red accents.",
   "output": {
     "format": "png",
     "width": 1122,
@@ -17,12 +17,12 @@
   },
   "prompt_template": {
     "subject_placeholder": "{plot}",
-    "style": "modern editorial illustration, clean composition, soft cinematic lighting, premium business visual, calm and trustworthy atmosphere",
-    "composition": "centered subject with negative space around it, portrait orientation, no visible text areas",
-    "palette": "deep navy blue, warm ivory, muted gold accents",
-    "detail_level": "highly detailed but uncluttered"
+    "style": "business editorial 2D cartoon illustration with clean vector-like shapes, crisp dark navy character outlines and soft tonal shading. When people are present, use slightly enlarged heads, simplified anatomy, expressive poses, near-white faces, small dark oval eyes and simple lines for the nose and mouth. Hair and clothing form clear dark navy silhouettes. Objects have simplified geometric forms; background objects use lighter, weaker outlines or adjacent color planes. Use soft diffuse daylight, gentle cool gray-blue shadows and smooth mostly matte surfaces. Small stylized highlights on glass and metal are allowed. Render the entire scene as a drawn 2D illustration, including faces and hands",
+    "composition": "portrait orientation with a clear focal point and large readable foreground silhouettes. Keep the background predominantly near-white and pale cool gray-blue. Supporting objects explain the requested scene. Build moderate depth through overlap, scale and simple perspective; distant objects are lighter and less detailed. Leave light negative space between object groups. Choose people, objects and actions only from the requested subject",
+    "palette": "predominantly near-white #F6F8FC and pale cool gray-blue #DDE3ED, with muted steel gray-blue #AEB9CA for secondary planes. Deep blue-black #162338 is reserved for character outlines, hair, clothing and selected foreground objects. Saturated red #C9002B provides small local accents on meaningful objects. The overall image stays light and cool; other saturated colors appear only when explicitly required by the subject",
+    "detail_level": "moderate stylized detail on the main subject, simplified secondary objects and low-detail distant planes. Smooth fills and subtle gradients; no realistic skin pores, fabric weave, photographic texture or fine visual noise. If the subject includes an app or screen, draw a simple schematic interface with large shapes and icons, without readable text"
   },
-  "negative_prompt": "text, letters, words, typography, watermark, logo, signature, UI elements, cropped subject, blurry, low quality, oversaturated, harsh shadows",
+  "negative_prompt": "photorealism, photography, realistic 3D render, realistic skin texture, cinematic lighting, dark background, warm ivory background, gold accents, glossy plastic, heavy black shadows, harsh directional lighting, painterly brush strokes, grain, noise, thick black outlines on every object, text, letters, words, typography, watermark, logo, signature, cropped main subject, blurry, low quality",
   "postprocessing": {
     "target_width": 1122,
     "target_height": 1402,
