@@ -25,7 +25,7 @@ def test_prepares_single_style_generation_contract(
 
     assert result.plot == request.plot
     assert result.style_id == "style_01"
-    assert result.style_version == 1
+    assert result.style_version == 2
     assert result.model == "mock-model"
     assert result.image_format == "png"
     assert result.width == 1122
@@ -41,3 +41,19 @@ def test_rejects_disabled_style() -> None:
 
     with pytest.raises(UseCaseError, match="disabled"):
         use_case.execute(SlideGenerationRequest(plot="Сюжет для тестовой генерации"))
+
+
+def test_banking_scene_uses_reference_style_without_forbidding_interfaces(
+    use_case: PrepareSlideGenerationUseCase,
+) -> None:
+    plot = "Человек сравнивает деньги в стеклянной банке и банковское приложение на телефоне"
+
+    result = use_case.execute(SlideGenerationRequest(plot=plot))
+
+    assert result.style_version == 2
+    assert f"Visual subject: {plot}" in result.prompt
+    assert "simple schematic interface" in result.prompt
+    assert "UI elements" not in result.negative_prompt
+    assert "photorealism" in result.negative_prompt
+    assert "dark background" in result.negative_prompt
+    assert (result.width, result.height) == (1122, 1402)

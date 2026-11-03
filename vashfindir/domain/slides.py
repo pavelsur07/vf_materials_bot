@@ -59,23 +59,51 @@ class SlidePromptTemplate(BaseModel):
     subject_placeholder: str = Field(default="{plot}", min_length=1)
     style: str = Field(
         default=(
-            "modern editorial illustration, clean composition, soft cinematic lighting, "
-            "premium business visual, calm and trustworthy atmosphere"
+            "business editorial 2D cartoon illustration with clean vector-like shapes, "
+            "crisp dark navy character outlines and soft tonal shading. "
+            "When people are present, use slightly enlarged heads, simplified anatomy, "
+            "expressive poses, near-white faces, small dark oval eyes and simple lines "
+            "for the nose and mouth. Hair and clothing form clear dark navy silhouettes. "
+            "Objects have simplified geometric forms; background objects use lighter, "
+            "weaker outlines or adjacent color planes. Use soft diffuse daylight, "
+            "gentle cool gray-blue shadows and smooth mostly matte surfaces. "
+            "Small stylized highlights on glass and metal are allowed. "
+            "Render the entire scene as a drawn 2D illustration, including faces and hands"
         ),
         min_length=1,
     )
     composition: str = Field(
         default=(
-            "centered subject with negative space around it, portrait orientation, "
-            "no visible text areas"
+            "portrait orientation with a clear focal point and large readable foreground "
+            "silhouettes. Keep the background predominantly near-white and pale cool "
+            "gray-blue. Supporting objects explain the requested scene. Build moderate "
+            "depth through overlap, scale and simple perspective; distant objects are "
+            "lighter and less detailed. Leave light negative space between object groups. "
+            "Choose people, objects and actions only from the requested subject"
         ),
         min_length=1,
     )
     palette: str = Field(
-        default="deep navy blue, warm ivory, muted gold accents",
+        default=(
+            "predominantly near-white #F6F8FC and pale cool gray-blue #DDE3ED, "
+            "with muted steel gray-blue #AEB9CA for secondary planes. "
+            "Deep blue-black #162338 is reserved for character outlines, hair, clothing "
+            "and selected foreground objects. Saturated red #C9002B provides small local "
+            "accents on meaningful objects. The overall image stays light and cool; "
+            "other saturated colors appear only when explicitly required by the subject"
+        ),
         min_length=1,
     )
-    detail_level: str = Field(default="highly detailed but uncluttered", min_length=1)
+    detail_level: str = Field(
+        default=(
+            "moderate stylized detail on the main subject, simplified secondary objects "
+            "and low-detail distant planes. Smooth fills and subtle gradients; "
+            "no realistic skin pores, fabric weave, photographic texture or fine visual noise. "
+            "If the subject includes an app or screen, draw a simple schematic interface "
+            "with large shapes and icons, without readable text"
+        ),
+        min_length=1,
+    )
 
     @model_validator(mode="after")
     def _single_plot_placeholder(self) -> Self:
@@ -114,11 +142,14 @@ class SlideStyle(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     id: SlideStyleId = SlideStyleId.STYLE_01
-    name: str = Field(default="Style 01", min_length=1)
-    version: int = Field(default=1, ge=1)
+    name: str = Field(default="Стиль 1", min_length=1)
+    version: int = Field(default=2, ge=1)
     enabled: bool = True
     description: str = Field(
-        default="Test visual style for the MVP slide generator.",
+        default=(
+            "Light cool-toned business 2D illustration based on foto-1.png and foto-4.png: "
+            "dark navy contours, simplified pale faces and local red accents."
+        ),
         min_length=1,
     )
     output: SlideOutputSpec = Field(default_factory=SlideOutputSpec)
@@ -126,8 +157,12 @@ class SlideStyle(BaseModel):
     prompt_template: SlidePromptTemplate = Field(default_factory=SlidePromptTemplate)
     negative_prompt: str = Field(
         default=(
-            "text, letters, words, typography, watermark, logo, signature, UI elements, "
-            "cropped subject, blurry, low quality, oversaturated, harsh shadows"
+            "photorealism, photography, realistic 3D render, realistic skin texture, "
+            "cinematic lighting, dark background, warm ivory background, gold accents, "
+            "glossy plastic, heavy black shadows, harsh directional lighting, "
+            "painterly brush strokes, grain, noise, thick black outlines on every object, "
+            "text, letters, words, typography, watermark, logo, signature, "
+            "cropped main subject, blurry, low quality"
         ),
         min_length=1,
     )

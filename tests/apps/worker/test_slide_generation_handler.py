@@ -159,6 +159,35 @@ async def test_handler_marks_generation_failed_when_provider_raises(
     assert not (generation_root / str(generation.id) / "slide.png").exists()
 
 
+async def test_handler_saves_provider_error_reason_and_diagnostics(
+    session: AsyncSession,
+    generation_root: Path,
+) -> None:
+    generation = await _create_generation(session)
+    job = await enqueue_job(
+        session, GENERATE_SLIDE_JOB_TYPE, {"slide_generation_id": generation.id}
+    )
+    error = ImageGenerationError(
+        "image provider returned status 401: истёк срок действия API-ключа; "
+        "code=expired_secret_key; request_id=req_expired_123",
+        status_code=401,
+        error_code="expired_secret_key",
+        request_id="req_expired_123",
+    )
+    with pytest.raises(RuntimeError, match="истёк срок действия API-ключа"):
+        await build_handlers(FakeImageGenerator(b"", error=error))[GENERATE_SLIDE_JOB_TYPE](
+            job, session
+        )
+
+    await session.refresh(generation)
+    assert generation.status == SlideGenerationStatus.FAILED
+    assert generation.error is not None
+    assert "истёк срок действия API-ключа" in generation.error
+    assert "code=expired_secret_key" in generation.error
+    assert "request_id=req_expired_123" in generation.error
+    assert not (generation_root / str(generation.id) / "slide.png").exists()
+
+
 async def test_handler_rejects_invalid_payload(session: AsyncSession) -> None:
     job = await enqueue_job(
         session,

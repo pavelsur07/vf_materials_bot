@@ -1,4 +1,5 @@
 import base64
+import json
 from typing import Any, cast
 
 import pytest
@@ -302,6 +303,95 @@ async def test_http_generator_does_not_retry_permanent_error() -> None:
 
     assert not isinstance(exc_info.value, ImageProviderUnavailableError)
     assert len(session.requests) == 1
+
+
+async def test_expired_key_error_preserves_safe_diagnostics(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    session = _FakeSession(
+        responses=[
+            _FakeResponse(
+                401,
+                {
+                    "error": {
+                        "code": "expired_secret_key",
+                        "type": "invalid_request_error",
+                        "message": "Expired secret-key; private prompt: customer financial data",
+                    }
+                },
+                headers={"x-request-id": "req_expired_123"},
+            )
+        ]
+    )
+    with pytest.raises(ImageGenerationError) as exc_info:
+        await _adapter(session).generate(
+            prompt="private customer financial data",
+            negative_prompt="negative",
+            model="model",
+            width=1122,
+            height=1402,
+        )
+
+    error = exc_info.value
+    assert error.status_code == 401
+    assert error.error_code == "expired_secret_key"
+    assert error.error_type == "invalid_request_error"
+    assert error.request_id == "req_expired_123"
+    assert "истёк срок действия API-ключа" in str(error)
+    assert "expired_secret_key" in caplog.text
+    assert "req_expired_123" in caplog.text
+    for sensitive in ("secret-key", "customer financial data"):
+        assert sensitive not in str(error)
+        assert sensitive not in caplog.text
+    assert len(session.requests) == 1
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [None, [], {"error": "bad key"}, {"error": None}, json.JSONDecodeError("bad", "", 0)],
+)
+async def test_unreadable_error_body_keeps_permanent_http_status(payload: Any) -> None:
+    session = _FakeSession(status=401, payload=payload)
+    adapter = HttpImageGenerator(
+        cast(ClientSession, session),
+        url="https://image-provider.example/generate",
+        api_key="secret-key",
+        timeout_seconds=10,
+        max_attempts=3,
+    )
+    with pytest.raises(ImageGenerationError, match="status 401") as exc_info:
+        await adapter.generate(
+            prompt="prompt", negative_prompt="", model="model", width=1122, height=1402
+        )
+    assert not isinstance(exc_info.value, ImageProviderUnavailableError)
+    assert len(session.requests) == 1
+
+
+@pytest.mark.parametrize(
+    "unsafe_value", ["secret-key", "sk-other-secret", "injected\nERROR", "x" * 129]
+)
+async def test_error_metadata_cannot_leak_secrets_or_inject_log_lines(
+    unsafe_value: str,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    session = _FakeSession(
+        responses=[
+            _FakeResponse(
+                401,
+                {"error": {"code": unsafe_value, "type": unsafe_value}},
+                headers={"x-request-id": unsafe_value},
+            )
+        ]
+    )
+    with pytest.raises(ImageGenerationError) as exc_info:
+        await _adapter(session).generate(
+            prompt="prompt", negative_prompt="", model="model", width=1122, height=1402
+        )
+    assert unsafe_value not in str(exc_info.value)
+    assert unsafe_value not in caplog.text
+    assert exc_info.value.error_code is None
+    assert exc_info.value.error_type is None
+    assert exc_info.value.request_id is None
 
 
 async def test_http_generator_does_not_retry_invalid_payload() -> None:
