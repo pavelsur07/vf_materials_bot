@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 from pydantic import ValidationError
 
@@ -7,6 +9,7 @@ from vashfindir.domain.slides import (
     SLIDE_WIDTH,
     SlideOutputSpec,
     SlidePromptTemplate,
+    SlideStyle,
     default_slide_style,
 )
 
@@ -42,5 +45,19 @@ def test_prompt_template_requires_plot_placeholder() -> None:
 
 
 def test_output_spec_rejects_non_mvp_size() -> None:
-    with pytest.raises(ValidationError, match="1080x1350"):
-        SlideOutputSpec(width=1920, height=1080)
+    with pytest.raises(ValidationError, match="1122x1402"):
+        SlideOutputSpec(width=1920, height=1122)
+
+
+def test_style_01_matches_reference_dimensions_and_documented_profile() -> None:
+    style = default_slide_style()
+    documented = SlideStyle.model_validate_json(Path("docs/style_01.json").read_text())
+
+    assert (style.output.width, style.output.height) == (1122, 1402)
+    assert style.generation.aspect_ratio == "561:701"
+    assert documented == style
+
+
+def test_style_01_rejects_previous_output_size() -> None:
+    with pytest.raises(ValidationError, match="1122x1402"):
+        SlideOutputSpec(width=1080, height=1350)

@@ -18,12 +18,12 @@ async def test_normalizes_png_to_mvp_size() -> None:
 
     with Image.open(BytesIO(normalized)) as image:
         assert image.format == "PNG"
-        assert image.size == (1080, 1350)
+        assert image.size == (1122, 1402)
         assert image.mode == "RGB"
 
 
 async def test_normalization_strips_png_metadata() -> None:
-    source = Image.new("RGB", (1080, 1350), "navy")
+    source = Image.new("RGB", (1122, 1402), "navy")
     metadata = PngImagePlugin.PngInfo()
     metadata.add_text("Software", "test")
     metadata.add_text("comment", "secret metadata")
@@ -45,7 +45,7 @@ async def test_preserves_alpha_channel() -> None:
 
     with Image.open(BytesIO(normalized)) as image:
         assert image.mode == "RGBA"
-        assert image.size == (1080, 1350)
+        assert image.size == (1122, 1402)
 
 
 async def test_rejects_empty_content() -> None:
