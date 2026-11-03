@@ -28,8 +28,8 @@ def test_prepares_single_style_generation_contract(
     assert result.style_version == 1
     assert result.model == "mock-model"
     assert result.image_format == "png"
-    assert result.width == 1080
-    assert result.height == 1350
+    assert result.width == 1122
+    assert result.height == 1402
     assert "Visual subject:" in result.prompt
     assert result.negative_prompt
     assert SlideGenerationResult.model_validate(result.model_dump()) == result

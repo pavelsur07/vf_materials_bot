@@ -9,9 +9,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from vashfindir.db.models import SlideGeneration
 
-SLIDE_WIDTH = 1080
-SLIDE_HEIGHT = 1350
-SLIDE_ASPECT_RATIO = "4:5"
+SLIDE_WIDTH = 1122
+SLIDE_HEIGHT = 1402
+SLIDE_ASPECT_RATIO = "561:701"
 MIN_PLOT_LENGTH = 10
 MAX_PLOT_LENGTH = 1000
 
@@ -34,7 +34,7 @@ class SlideOutputSpec(BaseModel):
     @model_validator(mode="after")
     def _fixed_mvp_size(self) -> Self:
         if self.width != SLIDE_WIDTH or self.height != SLIDE_HEIGHT:
-            raise ValueError("MVP slide output must be 1080x1350")
+            raise ValueError("MVP slide output must be 1122x1402")
         return self
 
 
@@ -49,7 +49,7 @@ class SlideGenerationSettings(BaseModel):
     @model_validator(mode="after")
     def _fixed_mvp_aspect_ratio(self) -> Self:
         if self.aspect_ratio != SLIDE_ASPECT_RATIO:
-            raise ValueError("MVP slide aspect ratio must be 4:5")
+            raise ValueError("MVP slide aspect ratio must be 561:701")
         return self
 
 
@@ -106,7 +106,7 @@ class SlidePostprocessingSpec(BaseModel):
     @model_validator(mode="after")
     def _fixed_mvp_target(self) -> Self:
         if self.target_width != SLIDE_WIDTH or self.target_height != SLIDE_HEIGHT:
-            raise ValueError("MVP slide postprocessing target must be 1080x1350")
+            raise ValueError("MVP slide postprocessing target must be 1122x1402")
         return self
 
 

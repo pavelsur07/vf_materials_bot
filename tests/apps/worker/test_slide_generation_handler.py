@@ -102,15 +102,15 @@ async def test_handler_generates_normalizes_and_saves_slide(
 
     with Image.open(result_path) as image:
         assert image.format == "PNG"
-        assert image.size == (1080, 1350)
+        assert image.size == (1122, 1402)
 
     assert image_generator.requests == [
         {
             "prompt": "Visual subject: тест",
             "negative_prompt": "text, watermark",
             "model": "mock-model",
-            "width": 1080,
-            "height": 1350,
+            "width": 1122,
+            "height": 1402,
         }
     ]
 

@@ -6,12 +6,12 @@
   "description": "Test visual style for the MVP slide generator.",
   "output": {
     "format": "png",
-    "width": 1080,
-    "height": 1350
+    "width": 1122,
+    "height": 1402
   },
   "generation": {
     "model": "mock-model",
-    "aspect_ratio": "4:5",
+    "aspect_ratio": "561:701",
     "seed": null,
     "quality": "high"
   },
@@ -24,8 +24,8 @@
   },
   "negative_prompt": "text, letters, words, typography, watermark, logo, signature, UI elements, cropped subject, blurry, low quality, oversaturated, harsh shadows",
   "postprocessing": {
-    "target_width": 1080,
-    "target_height": 1350,
+    "target_width": 1122,
+    "target_height": 1402,
     "allow_crop": true,
     "allow_resize": true,
     "strip_metadata": true

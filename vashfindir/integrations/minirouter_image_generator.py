@@ -26,7 +26,6 @@ class MiniRouterImageGenerator(OpenAICompatibleImageGenerator):
         )
         payload.update(
             {
-                "size": "1024x1024",
                 "quality": "low",
                 "background": "auto",
                 "moderation": "auto",

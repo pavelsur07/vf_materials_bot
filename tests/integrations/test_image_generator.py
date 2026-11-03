@@ -423,8 +423,8 @@ async def test_minirouter_adapter_uses_model_specific_controls() -> None:
         prompt="Visual subject: test",
         negative_prompt="text, watermark",
         model="style-model",
-        width=1080,
-        height=1350,
+        width=1122,
+        height=1402,
     )
 
     assert result.provider_request_id == "minirouter-request-2"
@@ -433,7 +433,7 @@ async def test_minirouter_adapter_uses_model_specific_controls() -> None:
         "model": "openai/gpt-image-2.5-flare",
         "prompt": "Visual subject: test\nAvoid: text, watermark",
         "n": 1,
-        "size": "1024x1024",
+        "size": "1024x1536",
         "quality": "low",
         "output_format": "png",
         "response_format": "b64_json",
