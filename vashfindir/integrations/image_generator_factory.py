@@ -1,7 +1,8 @@
 from aiohttp import ClientSession
 
 from vashfindir.core.config import Settings
-from vashfindir.integrations.image_generator import ImageGenerator
+from vashfindir.integrations.image_generator import HttpImageGenerator, ImageGenerator
+from vashfindir.integrations.minimax_image_generator import MiniMaxImageGenerator
 from vashfindir.integrations.minirouter_image_generator import MiniRouterImageGenerator
 from vashfindir.integrations.mock_image_generator import MockImageGenerator
 from vashfindir.integrations.openai_compatible_image_generator import (
@@ -16,12 +17,17 @@ def create_image_generator(settings: Settings, session: ClientSession) -> ImageG
     if has_url != has_api_key:
         raise ValueError("image provider url and api key must be configured together")
     if has_url and has_api_key:
+        is_minimax = "minimax" in settings.image_provider_url
         is_minirouter = "minirouter.sh" in settings.image_provider_url or (
             settings.image_provider_model.startswith("openai/gpt-image-2.5-")
         )
-        generator_class = (
-            MiniRouterImageGenerator if is_minirouter else OpenAICompatibleImageGenerator
-        )
+        generator_class: type[HttpImageGenerator]
+        if is_minimax:
+            generator_class = MiniMaxImageGenerator
+        elif is_minirouter:
+            generator_class = MiniRouterImageGenerator
+        else:
+            generator_class = OpenAICompatibleImageGenerator
         return generator_class(
             session,
             url=settings.image_provider_url,

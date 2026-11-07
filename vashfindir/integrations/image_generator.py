@@ -219,8 +219,7 @@ class HttpImageGenerator:
             request_id=safe_request_id,
         )
 
-    @staticmethod
-    def _parse_response(payload: Any, fallback_request_id: str | None) -> GeneratedImage:
+    def _parse_response(self, payload: Any, fallback_request_id: str | None) -> GeneratedImage:
         if not isinstance(payload, dict):
             raise ImageGenerationError("image provider returned an invalid payload")
         data = payload.get("data")
