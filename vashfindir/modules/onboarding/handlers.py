@@ -63,7 +63,19 @@ async def on_check_subscription(
     message = callback.message
     if isinstance(message, Message):
         try:
-            await message.edit_text(result.text, reply_markup=onboarding_kb(result))
+            keyboard = onboarding_kb(result)
+            if message.reply_markup is not None:
+                # Extra actions from the original /start stay tied to that touch.
+                legacy_callback = CheckSubCb(action="check").pack()
+                for row in message.reply_markup.inline_keyboard:
+                    extras = [
+                        button
+                        for button in row
+                        if button.callback_data and button.callback_data != legacy_callback
+                    ]
+                    if extras:
+                        keyboard.inline_keyboard.append(extras)
+            await message.edit_text(result.text, reply_markup=keyboard)
         except TelegramBadRequest as exc:
             if "message is not modified" not in str(exc):
                 logger.warning(

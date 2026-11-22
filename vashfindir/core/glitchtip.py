@@ -1,4 +1,5 @@
 import sentry_sdk
+from sentry_sdk.integrations.aiohttp import AioHttpIntegration
 
 from vashfindir.core.config import Settings
 
@@ -14,4 +15,6 @@ def init_glitchtip(settings: Settings) -> None:
         traces_sample_rate=settings.glitchtip_traces_sample_rate,
         max_request_body_size="never",
         include_local_variables=False,
+        # Telegram and Bitrix24 use credentials in URL paths.
+        disabled_integrations=[AioHttpIntegration],
     )

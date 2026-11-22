@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 from aiogram import Bot
-from aiogram.types import Chat, Message, Update
+from aiogram.types import CallbackQuery, Chat, Message, Update
 from aiogram.types import User as TelegramUser
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -11,6 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from vashfindir.apps.bot import __main__ as main
 from vashfindir.core.config import Settings
 from vashfindir.db.models import LeadMagnet, Touch
+from vashfindir.modules.attribution.keyboards import catalog_button
+from vashfindir.modules.onboarding.keyboards import CheckSubCb, subscribe_kb
 
 
 async def test_dispatcher_tracks_start_and_preserves_legacy_material(
@@ -52,6 +54,40 @@ async def test_dispatcher_tracks_start_and_preserves_legacy_material(
                     ),
                 ),
             )
+        user = TelegramUser(id=765, is_bot=False, first_name="Иван")
+        markup = subscribe_kb("https://t.me/example")
+        markup.inline_keyboard.append([catalog_button(1)])
+        await dispatcher.feed_update(
+            bot,
+            Update(
+                update_id=3,
+                callback_query=CallbackQuery(
+                    id="check",
+                    from_user=user,
+                    chat_instance="private",
+                    data=CheckSubCb(action="check").pack(),
+                    message=Message(
+                        message_id=1,
+                        date=datetime.now(UTC),
+                        chat=Chat(id=765, type="private"),
+                        reply_markup=markup,
+                    ),
+                ),
+            ),
+        )
+        await dispatcher.feed_update(
+            bot,
+            Update(
+                update_id=4,
+                message=Message(
+                    message_id=4,
+                    date=datetime.now(UTC),
+                    chat=Chat(id=-999, type="group"),
+                    text="/start dds_894",
+                    from_user=user,
+                ),
+            ),
+        )
     finally:
         await bot.session.close()
 
@@ -60,12 +96,20 @@ async def test_dispatcher_tracks_start_and_preserves_legacy_material(
         for call in transport.await_args_list
         if call.args[1].__class__.__name__ == "SendMessage"
     ]
-    assert len(sent) == 2
+    assert len(sent) == 3
     assert "https://example.org/legacy" in sent[0].text
     assert sent[0].reply_markup.inline_keyboard[-1][0].text == "Другие материалы"
     assert sent[1].text == "Checklist"
+    assert "личный чат" in sent[2].text
+    edits = [
+        call.args[1]
+        for call in transport.await_args_list
+        if call.args[1].__class__.__name__ == "EditMessageText"
+    ]
+    assert edits[0].reply_markup.inline_keyboard[-1][0].text == "Другие материалы"
     touches = (await session.scalars(select(Touch).order_by(Touch.id))).all()
     assert [(touch.code_status, touch.magnet_delivered) for touch in touches] == [
         ("direct", False),
         ("unknown", True),
+        ("unknown", False),
     ]

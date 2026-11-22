@@ -47,8 +47,10 @@ class DictValueInput(FormValues):
 
     @field_validator("value", mode="before")
     @classmethod
-    def normalize_value(cls, value: str) -> str:
-        return value.strip().lower()
+    def normalize_value(cls, value: object) -> object:
+        if isinstance(value, str) and value.strip().isascii():
+            return value.strip().lower()
+        return value
 
 
 class LinkChanges(FormValues):
@@ -80,7 +82,7 @@ class LinkInput(LinkChanges):
     @field_validator("utm_campaign", "utm_content", "utm_term", mode="before")
     @classmethod
     def normalize_tag(cls, value: object) -> object:
-        if isinstance(value, str):
+        if isinstance(value, str) and value.strip().isascii():
             return re.sub(r"\s+", "_", value.strip().lower()) or None
         return value
 

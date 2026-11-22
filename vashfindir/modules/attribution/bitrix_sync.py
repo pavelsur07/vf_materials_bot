@@ -11,6 +11,7 @@ from vashfindir.domain.attribution.bitrix_queue import (
     fail_touch,
     get_work,
     save_lead_id,
+    start_comment,
     succeed_touch,
 )
 from vashfindir.domain.attribution.bitrix_settings import (
@@ -62,6 +63,7 @@ class BitrixSync:
         session: AsyncSession,
         connection: BitrixConnection,
         work: BitrixWork,
+        update_fields: dict[str, object],
         *,
         deleted_lead: int | None = None,
     ) -> int:
@@ -92,6 +94,8 @@ class BitrixSync:
                     fields.magnets: work.delivered_magnets,
                 },
             )
+        else:
+            await self._gateway.update_lead(connection.webhook, lead_id, update_fields)
         async with session.begin():
             await save_lead_id(session, work.tg_id, lead_id)
         return lead_id
@@ -121,7 +125,7 @@ class BitrixSync:
             }
             lead_id = work.lead_id
             if lead_id is None:
-                lead_id = await self._ensure_lead(session, connection, work)
+                lead_id = await self._ensure_lead(session, connection, work, update_fields)
             else:
                 try:
                     await self._gateway.update_lead(connection.webhook, lead_id, update_fields)
@@ -130,18 +134,20 @@ class BitrixSync:
                         raise
                     old_lead = lead_id
                     lead_id = await self._ensure_lead(
-                        session, connection, work, deleted_lead=old_lead
+                        session, connection, work, update_fields, deleted_lead=old_lead
                     )
                     new_lead = lead_id
                     comment_id = None
 
-            if work.touch_id != work.first_touch_id and comment_id is None:
+            if work.touch_id != work.first_touch_id and not comment_id:
                 marker = f"[касание #{touch_id}]"
-                if work.attempts:
+                if comment_id == 0:
                     comment_id = await self._gateway.find_comment(
                         connection.webhook, lead_id, marker
                     )
                 if comment_id is None:
+                    async with session.begin():
+                        await start_comment(session, touch_id)
                     magnet = work.current_magnet or "без материала"
                     timestamp = work.current_at.strftime("%Y-%m-%d %H:%M:%S UTC")
                     comment_id = await self._gateway.add_comment(

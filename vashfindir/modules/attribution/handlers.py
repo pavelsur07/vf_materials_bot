@@ -68,7 +68,11 @@ async def on_attribution_action(
     session: AsyncSession,
     attribution: AttributionUseCase,
 ) -> None:
-    if not isinstance(callback.message, Message) or not attribution.settings.attribution_enabled:
+    if (
+        not isinstance(callback.message, Message)
+        or callback.message.chat.type != "private"
+        or not attribution.settings.attribution_enabled
+    ):
         await callback.answer(CATALOG_EXPIRED)
         return
     tg_id = callback.from_user.id

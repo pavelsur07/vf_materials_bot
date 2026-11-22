@@ -152,3 +152,92 @@ async def test_reset_creates_distinct_test_lead_without_reusing_old_origin(
     one, two = [call.args[1] for call in transport.add_lead.await_args_list]
     assert one["TITLE"] == two["TITLE"] == "[ТЕСТ] Telegram: Тест"
     assert one["ORIGIN_ID"] != two["ORIGIN_ID"]
+
+
+async def test_comment_is_reconciled_after_worker_crashes_before_receipt_commit(
+    session: AsyncSession,
+) -> None:
+    import asyncio
+
+    import pytest
+
+    from vashfindir.modules.attribution.bitrix_sync import BitrixSync
+
+    await configure(session)
+    now = datetime(2026, 11, 22, 12)
+    request = StartRequest(tg_id=100, first_name="Иван")
+    direct = await register_touch(session, request, now=now)
+    follow_up = await register_touch(
+        session, request.model_copy(update={"payload": "second"}), now=now + timedelta(minutes=1)
+    )
+    transport = AsyncMock()
+    transport.find_lead.return_value = None
+    transport.add_lead.return_value = 55
+    transport.find_comment.return_value = None
+
+    async def accepted_then_worker_stops(*args) -> int:
+        transport.find_comment.return_value = 77
+        raise asyncio.CancelledError
+
+    transport.add_comment.side_effect = accepted_then_worker_stops
+    sync = BitrixSync(transport, KEY)
+    await sync.handle_touch(session, direct.touch_id)
+    with pytest.raises(asyncio.CancelledError):
+        await sync.handle_touch(session, follow_up.touch_id)
+    await sync.handle_touch(session, follow_up.touch_id)
+    transport.add_comment.assert_awaited_once()
+    touch = await session.get(Touch, follow_up.touch_id)
+    assert touch.bitrix_comment_id == 77
+
+
+async def test_portal_cannot_be_swapped_after_creating_lead_even_after_disconnect(
+    session: AsyncSession,
+) -> None:
+    import pytest
+
+    from vashfindir.domain.attribution.bitrix_settings import BitrixSettingsError, disconnect
+
+    await configure(session)
+    await register_touch(session, StartRequest(tg_id=100, first_name="Иван"))
+    async with session.begin():
+        user = await session.get(User, 1)
+        user.bitrix_lead_id = 811
+        await disconnect(session, 10)
+    with pytest.raises(BitrixSettingsError, match="другому порталу"):
+        async with session.begin():
+            await save_connection(
+                session, KEY, FIELDS, SecretStr("https://other.bitrix24.ru/rest/15/test-key/"), 10
+            )
+    async with session.begin():
+        await save_connection(
+            session, KEY, FIELDS, SecretStr("https://example.bitrix24.ru/rest/15/rotated-key/"), 10
+        )
+
+
+async def test_recovered_lead_gets_material_delivered_after_timed_out_create(
+    session: AsyncSession,
+) -> None:
+    from vashfindir.db.models import LeadMagnet
+    from vashfindir.domain.attribution.touches import select_magnet
+    from vashfindir.integrations.bitrix24 import BitrixError
+    from vashfindir.modules.attribution.bitrix_sync import BitrixSync
+
+    await configure(session)
+    async with session.begin():
+        magnet = LeadMagnet(prefix="dds", name="ДДС", content_type="text", message="Text")
+        session.add(magnet)
+    now = datetime(2026, 11, 22, 12)
+    first = await register_touch(session, StartRequest(tg_id=100, first_name="Иван"), now=now)
+    transport = AsyncMock()
+    transport.find_lead.side_effect = [None, 55]
+    transport.add_lead.side_effect = BitrixError("network_error")
+    sync = BitrixSync(transport, KEY)
+    await sync.handle_touch(session, first.touch_id, now=now)
+    await select_magnet(session, 100, first.touch_id, magnet.id)
+    await finish_delivery(session, 100, first.touch_id, delivered=True)
+    await sync.handle_touch(session, first.touch_id, now=now + timedelta(minutes=1))
+    transport.add_lead.assert_awaited_once()
+    assert transport.update_lead.await_args.args[1:] == (
+        55,
+        {"UF_CRM_LAST": "direct", "UF_CRM_MAGNETS": "dds"},
+    )

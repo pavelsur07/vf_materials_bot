@@ -46,3 +46,17 @@ async def test_remote_descriptions_and_transport_errors_do_not_leak() -> None:
     with pytest.raises(BitrixError, match="^network_error$") as error:
         await adapter.add_lead(HOOK, {})
     assert error.value.__suppress_context__
+
+
+async def test_comment_lookup_follows_next_page_for_exact_marker() -> None:
+    session = MagicMock()
+    pages = [
+        {"result": [{"ID": "10", "COMMENT": "another [касание #3]"}], "next": 50},
+        {"result": [{"ID": "8", "COMMENT": "found [касание #2]"}]},
+    ]
+    result = MagicMock(status=200, headers={})
+    result.json = AsyncMock(side_effect=pages)
+    session.post.return_value.__aenter__.return_value = result
+    adapter = BitrixClient(session, min_interval=0)
+    assert await adapter.find_comment(HOOK, 19, "[касание #2]") == 8
+    assert [call.kwargs["json"]["start"] for call in session.post.call_args_list] == [0, 50]

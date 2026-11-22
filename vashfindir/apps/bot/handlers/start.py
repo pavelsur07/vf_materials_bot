@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from vashfindir.domain.attribution.dto import StartRequest
 from vashfindir.domain.attribution.touches import finish_delivery
+from vashfindir.modules.attribution.dialogs import PRIVATE_CATALOGUE
 from vashfindir.modules.attribution.handlers import send_selected, show_catalogue
 from vashfindir.modules.attribution.keyboards import catalog_button
 from vashfindir.modules.attribution.use_cases import AttributionUseCase
@@ -41,7 +42,13 @@ async def on_start(
     )
     delivered = False
     try:
-        if touch.magnet is not None:
+        if message.chat.type != "private":
+            if touch.code_status == "direct":
+                await legacy_start(message, session, use_case)
+            else:
+                await message.answer(PRIVATE_CATALOGUE, parse_mode=None)
+            await finish_delivery(session, user.id, touch.touch_id)
+        elif touch.magnet is not None:
             delivered = await send_selected(
                 message,
                 user.id,

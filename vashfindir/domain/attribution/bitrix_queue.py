@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 
 from pydantic import BaseModel
-from sqlalchemy import Integer, cast, exists, func, or_, select, update
+from sqlalchemy import Integer, case, cast, exists, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
@@ -148,21 +148,23 @@ async def save_lead_id(session: AsyncSession, tg_id: int, lead_id: int) -> None:
     await session.execute(update(User).where(User.tg_id == tg_id).values(bitrix_lead_id=lead_id))
 
 
+async def start_comment(session: AsyncSession, touch_id: int) -> None:
+    # Bitrix24 IDs are positive, so zero denotes a comment request in flight.
+    await session.execute(update(Touch).where(Touch.id == touch_id).values(bitrix_comment_id=0))
+
+
 async def succeed_touch(
     session: AsyncSession,
     work: BitrixWork,
     comment_id: int | None,
 ) -> None:
-    newest_delivery = await session.scalar(
-        select(Touch.magnet_delivered).where(Touch.id == work.touch_id)
-    )
-    delivery_changed = bool(newest_delivery and not work.magnet_delivered)
+    delivery_changed = Touch.magnet_delivered.is_(True) & (not work.magnet_delivered)
     await session.execute(
         update(Touch)
         .where(Touch.id == work.touch_id)
         .values(
-            bitrix_status="pending" if delivery_changed else "ok",
-            bitrix_attempts=0 if delivery_changed else work.attempts + 1,
+            bitrix_status=case((delivery_changed, "pending"), else_="ok"),
+            bitrix_attempts=case((delivery_changed, 0), else_=work.attempts + 1),
             bitrix_next_attempt_at=None,
             bitrix_error=None,
             bitrix_comment_id=comment_id,

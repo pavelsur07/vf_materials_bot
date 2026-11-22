@@ -57,3 +57,13 @@ def test_campaign_rejects_non_latin_values(value: str) -> None:
             utm_campaign=value,
             placement="Канал",
         )
+
+
+@pytest.mark.parametrize("value", [None, "Kanal", "Канал", "tg-ad"])
+def test_dictionary_validation_reports_invalid_form_values(value: object) -> None:
+    from pydantic import ValidationError
+
+    from vashfindir.domain.attribution.dto import DictValueInput
+
+    with pytest.raises(ValidationError):
+        DictValueInput.model_validate({"value": value, "label": "Канал"})

@@ -1,10 +1,8 @@
 import asyncio
 from typing import cast
 
-import sentry_sdk
 from aiohttp import ClientError, ClientSession, ClientTimeout
 from pydantic import SecretStr
-from sentry_sdk.client import NonRecordingClient
 
 _NOT_FOUND = {"NOT_FOUND", "ERROR_NOT_FOUND", "CRM_LEAD_NOT_FOUND"}
 _RATE_LIMIT = {"QUERY_LIMIT_EXCEEDED", "OPERATION_TIME_LIMIT"}
@@ -37,7 +35,7 @@ class BitrixClient:
         webhook: SecretStr,
         method: str,
         data: dict[str, object],
-    ) -> object:
+    ) -> dict[str, object]:
         async with self._lock:
             loop = asyncio.get_running_loop()
             delay = self._next_request - loop.time()
@@ -45,29 +43,26 @@ class BitrixClient:
                 await asyncio.sleep(delay)
             self._next_request = loop.time() + self._interval
 
-            # The credential is in the URL path, which aiohttp spans normally record.
-            with sentry_sdk.new_scope() as scope:
-                scope.set_client(NonRecordingClient())
-                try:
-                    async with self._session.post(
-                        webhook.get_secret_value() + method,
-                        json=data,
-                        timeout=_TIMEOUT,
-                        allow_redirects=False,
-                    ) as response:
-                        status = response.status
-                        retry_header = response.headers.get("Retry-After", "")
-                        retry_after = (
-                            int(retry_header)
-                            if retry_header.isdecimal() and (len(retry_header) < 10)
-                            else 0
-                        )
-                        try:
-                            raw = await response.json(content_type=None)
-                        except ValueError:
-                            raw = None
-                except (ClientError, TimeoutError, ValueError):
-                    raise BitrixError("network_error") from None
+            try:
+                async with self._session.post(
+                    webhook.get_secret_value() + method,
+                    json=data,
+                    timeout=_TIMEOUT,
+                    allow_redirects=False,
+                ) as response:
+                    status = response.status
+                    retry_header = response.headers.get("Retry-After", "")
+                    retry_after = (
+                        int(retry_header)
+                        if retry_header.isdecimal() and (len(retry_header) < 10)
+                        else 0
+                    )
+                    try:
+                        raw = await response.json(content_type=None)
+                    except ValueError:
+                        raw = None
+            except (ClientError, TimeoutError, ValueError):
+                raise BitrixError("network_error") from None
 
         document = cast(dict[str, object], raw) if isinstance(raw, dict) else {}
         code_value = document.get("error")
@@ -88,7 +83,7 @@ class BitrixClient:
             raise BitrixError("bitrix_request_failed")
         if "result" not in document:
             raise BitrixError("invalid_response")
-        return document["result"]
+        return document
 
     async def find_lead(
         self,
@@ -96,7 +91,7 @@ class BitrixClient:
         originator_id: str,
         origin_id: str,
     ) -> int | None:
-        result = await self._request(
+        response = await self._request(
             webhook,
             "crm.lead.list",
             {
@@ -104,6 +99,7 @@ class BitrixClient:
                 "select": ["ID"],
             },
         )
+        result = response["result"]
         if not isinstance(result, list):
             raise BitrixError("invalid_response")
         if len(result) > 1:
@@ -116,7 +112,9 @@ class BitrixClient:
         return _response_id(row.get("ID"))
 
     async def add_lead(self, webhook: SecretStr, fields: dict[str, object]) -> int:
-        return _response_id(await self._request(webhook, "crm.lead.add", {"fields": fields}))
+        return _response_id(
+            (await self._request(webhook, "crm.lead.add", {"fields": fields}))["result"]
+        )
 
     async def update_lead(
         self,
@@ -125,7 +123,7 @@ class BitrixClient:
         fields: dict[str, object],
     ) -> None:
         result = await self._request(webhook, "crm.lead.update", {"id": lead_id, "fields": fields})
-        if result is not True:
+        if result["result"] is not True:
             raise BitrixError("invalid_response")
 
     async def find_comment(
@@ -134,32 +132,40 @@ class BitrixClient:
         lead_id: int,
         marker: str,
     ) -> int | None:
-        result = await self._request(
-            webhook,
-            "crm.timeline.comment.list",
-            {
-                "filter": {"ENTITY_ID": lead_id, "ENTITY_TYPE": "lead"},
-                "order": {"ID": "DESC"},
-                "select": ["ID", "COMMENT"],
-            },
-        )
-        if not isinstance(result, list):
-            raise BitrixError("invalid_response")
-        for row in result:
-            if isinstance(row, dict) and marker in str(row.get("COMMENT", "")):
-                return _response_id(row.get("ID"))
-        return None
-
-    async def add_comment(self, webhook: SecretStr, lead_id: int, text: str) -> int:
-        return _response_id(
-            await self._request(
+        cursor = 0
+        while True:
+            page = await self._request(
                 webhook,
-                "crm.timeline.comment.add",
+                "crm.timeline.comment.list",
                 {
-                    "fields": {"ENTITY_ID": lead_id, "ENTITY_TYPE": "lead", "COMMENT": text},
+                    "filter": {"ENTITY_ID": lead_id, "ENTITY_TYPE": "lead"},
+                    "order": {"ID": "DESC"},
+                    "select": ["ID", "COMMENT"],
+                    "start": cursor,
                 },
             )
+            result = page["result"]
+            if not isinstance(result, list):
+                raise BitrixError("invalid_response")
+            for row in result:
+                if isinstance(row, dict) and str(row.get("COMMENT", "")).endswith(marker):
+                    return _response_id(row.get("ID"))
+            if "next" not in page:
+                return None
+            advance = _response_id(page["next"])
+            if advance <= cursor:
+                raise BitrixError("invalid_response")
+            cursor = advance
+
+    async def add_comment(self, webhook: SecretStr, lead_id: int, text: str) -> int:
+        response = await self._request(
+            webhook,
+            "crm.timeline.comment.add",
+            {
+                "fields": {"ENTITY_ID": lead_id, "ENTITY_TYPE": "lead", "COMMENT": text},
+            },
         )
+        return _response_id(response["result"])
 
 
 def _response_id(value: object) -> int:
