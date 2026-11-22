@@ -1,0 +1,47 @@
+{% extends "attribution/base.html" %}
+{% from "attribution/macros.html" import csrf, pager %}
+{% block section %}
+<h1>Касания</h1>
+<nav><ul>
+  <li><a href="?code_status=unknown">Неизвестные коды</a></li>
+  <li><a href="?code_status=direct">Без кода</a></li>
+  <li><a href="?bitrix_status=error">Ошибки Bitrix24</a></li>
+</ul></nav>
+<form method="get">
+  <div class="grid">
+    <label>С <input type="date" name="start" value="{{ filters.start or '' }}"></label>
+    <label>По <input type="date" name="end" value="{{ filters.end or '' }}"></label>
+    <label>Код <input name="code" value="{{ filters.code or '' }}" maxlength="64"></label>
+    <label>Тип <select name="code_status"><option value="">Все</option>
+      {% for key, label in [('ok','Из реестра'),('direct','Без кода'),('unknown','Неизвестный')] %}<option value="{{ key }}"{% if filters.code_status == key %} selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select></label>
+  </div>
+  <div class="grid">
+    <label>Магнит <select name="magnet_id"><option value="">Все</option>
+      {% for magnet in magnets %}<option value="{{ magnet.id }}"{% if filters.magnet_id == magnet.id %} selected{% endif %}>{{ magnet.name }}</option>{% endfor %}
+    </select></label>
+    <label>Bitrix24 <select name="bitrix_status"><option value="">Все</option>
+      {% for key, label in [('pending','Ожидает'),('ok','Отправлено'),('error','Ошибка'),('skipped','Пропущено')] %}<option value="{{ key }}"{% if filters.bitrix_status == key %} selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select></label>
+    <div><button type="submit" class="secondary">Применить</button></div>
+  </div>
+</form>
+{% if retry_available %}
+{% if retry_count is not none %}<p>Поставлено на повторную отправку: {{ retry_count }}.</p>{% endif %}
+<form method="post" action="/admin/attribution/touches/retry">{{ csrf(csrf_token) }}<button type="submit">Повторить все с ошибкой</button></form>
+{% endif %}
+{% if rows %}
+<div class="overflow-auto"><table>
+<thead><tr><th>ID</th><th>Когда (UTC)</th><th>Пользователь</th><th>Код</th><th>Магнит</th><th>Выдан</th><th>Bitrix24</th></tr></thead>
+<tbody>{% for touch, code, magnet, username in rows %}
+  <tr><td>{{ touch.id }}{% if touch.is_test %} (тест){% endif %}</td><td>{{ touch.created_at }}</td><td>{{ username or touch.tg_id }}</td>
+  <td>{{ code or touch.raw_payload or '—' }} <small>{{ touch.code_status }}</small></td><td>{{ magnet or '—' }}</td>
+  <td>{{ 'Да' if touch.magnet_delivered else 'Нет' }}</td><td>{{ touch.bitrix_status }}
+  {% if touch.bitrix_error %}<small>{{ touch.bitrix_error }}</small>{% endif %}
+  {% if retry_available and touch.bitrix_status == 'error' %}<form method="post" action="/admin/attribution/touches/{{ touch.id }}/retry">{{ csrf(csrf_token) }}<button class="secondary" type="submit">Повторить</button></form>{% endif %}
+  </td></tr>
+{% endfor %}</tbody>
+</table></div>
+{% else %}<p>Касаний по этим параметрам нет.</p>{% endif %}
+{{ pager(request, page, next_page) }}
+{% endblock %}

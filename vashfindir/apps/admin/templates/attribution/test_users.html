@@ -1,0 +1,24 @@
+{% extends "attribution/base.html" %}
+{% from "attribution/macros.html" import csrf %}
+{% block section %}
+<h1>Тестовые пользователи</h1>
+{% if result == 'reset' %}<p class="ok">Тестовый пользователь сброшен. Следующий /start начнёт новый сценарий.</p>
+{% elif result == 'absent' %}<p>У пользователя пока нет истории в боте.</p>{% endif %}
+{% if ids %}
+<p>Сброс удаляет тестовые касания и профиль в боте. Предыдущий тестовый лид сохраняется в Bitrix24.</p>
+<div class="overflow-auto"><table>
+  <thead><tr><th>Telegram ID</th><th>Пользователь</th><th>Сброс</th></tr></thead>
+  <tbody>{% for tg_id in ids %}
+    {% set account = accounts.get(tg_id) %}
+    <tr><td>{{ tg_id }}</td><td>{{ account.username or account.first_name or '—' if account else 'Ещё не запускал бота' }}</td>
+    <td>{% if account %}
+      <form method="post" action="/admin/attribution/test-users/{{ tg_id }}/reset">
+        {{ csrf(csrf_token) }}
+        <label><input type="checkbox" required>Подтверждаю удаление тестовых касаний</label>
+        <button class="secondary" type="submit">Сбросить тестового пользователя</button>
+      </form>
+    {% endif %}</td></tr>
+  {% endfor %}</tbody>
+</table></div>
+{% else %}<p>Добавьте тестовые Telegram ID в разделе «Настройки».</p>{% endif %}
+{% endblock %}

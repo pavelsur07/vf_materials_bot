@@ -1,0 +1,15 @@
+{% extends "attribution/base.html" %}
+{% block section %}
+<h1>Выгрузки</h1>
+<p>Даты выгрузки используют часовой пояс {{ timezone }}. Пустые даты выгружают всю историю.</p>
+<p>В Excel используйте «Данные → Из текста/CSV» и задайте текстовый тип для исходного параметра и других текстовых колонок.</p>
+<form method="get">
+  <div class="grid">
+    <label>Создано с <input type="date" name="start"></label>
+    <label>Создано по <input type="date" name="end"></label>
+  </div>
+  <label><input type="checkbox" name="include_test" value="1">Включить тестовые касания</label>
+  <button type="submit" formaction="/admin/attribution/exports/links.csv">Реестр ссылок CSV</button>
+  <button type="submit" formaction="/admin/attribution/exports/touches.csv">Касания CSV</button>
+</form>
+{% endblock %}

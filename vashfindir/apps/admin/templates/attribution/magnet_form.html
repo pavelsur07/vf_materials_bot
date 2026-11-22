@@ -1,0 +1,20 @@
+{% extends "attribution/base.html" %}
+{% from "attribution/macros.html" import csrf %}
+{% block section %}
+<h1>{{ 'Редактировать лид-магнит' if entry else 'Новый лид-магнит' }}</h1>
+<form method="post">
+  {{ csrf(csrf_token) }}
+  {% if entry %}<label>Префикс <input value="{{ entry.prefix }}" disabled></label>
+  {% else %}<label>Префикс <input name="prefix" required minlength="2" maxlength="10" pattern="[a-z0-9]{2,10}" value="{{ values.prefix|default('', true) }}"></label>{% endif %}
+  <label>Название <input name="name" required maxlength="100" value="{{ values.name|default('', true) }}"></label>
+  <label>Тип материала <select name="content_type">
+    {% for key, text in [('text','Текст'),('link','Ссылка'),('file','Файл')] %}<option value="{{ key }}"{% if values.content_type == key %} selected{% endif %}>{{ text }}</option>{% endfor %}
+  </select></label>
+  <label>Ссылка <input type="url" name="url" value="{{ values.url|default('', true) }}"></label>
+  <label>Telegram file_id или путь <input name="file_ref" value="{{ values.file_ref|default('', true) }}" placeholder="file:checklist.pdf"></label>
+  <label>Сообщение <textarea name="message" maxlength="4096">{{ values.message|default('', true) }}</textarea></label>
+  <label>Порядок в меню <input type="number" name="sort" required value="{{ values.sort|default(0) }}"></label>
+  <label><input type="checkbox" name="is_active"{% if values.is_active %} checked{% endif %}>Активен</label>
+  <button type="submit">Сохранить</button>
+</form>
+{% endblock %}

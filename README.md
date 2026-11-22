@@ -217,3 +217,8 @@ uv run alembic revision --autogenerate -m "..."   # новая миграция
 uv run alembic upgrade head                       # применить миграции
 uv run pytest                                     # тесты
 ```
+
+## Атрибуция и лид-магниты
+
+Подключение каталога Telegram, настройка Bitrix24, запуск воркера и схема
+выгрузок описаны в [инструкции по атрибуции](docs/attribution.md).

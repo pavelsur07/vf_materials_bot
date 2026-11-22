@@ -1,0 +1,8 @@
+{% extends "attribution/base.html" %}
+{% from "attribution/macros.html" import csrf %}
+{% block section %}
+<h1>Подтвердите Telegram ID</h1>
+<p>Отправьте команду в личном чате с ботом «Ваш Финдир» и вернитесь в браузер. Код действует 10 минут.</p>
+{% if code %}<p><code>/admin_auth {{ code }}</code></p>{% endif %}
+<form method="post">{{ csrf(csrf_token) }}<button type="submit">Завершить вход</button></form>
+{% endblock %}

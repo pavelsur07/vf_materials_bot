@@ -2,8 +2,7 @@ import logging
 
 from aiogram import Router
 from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
-from aiogram.filters import CommandStart
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import CallbackQuery, InlineKeyboardButton, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from vashfindir.domain.subscription import SubscriptionStatus
@@ -15,17 +14,17 @@ router = Router(name="onboarding")
 logger = logging.getLogger(__name__)
 
 
-@router.message(CommandStart())
 async def on_start(
     message: Message,
     session: AsyncSession,
     use_case: OnboardingUseCase,
+    *,
+    catalogue_button: InlineKeyboardButton | None = None,
 ) -> None:
     if message.from_user is None:
         return
 
     user = message.from_user
-    logger.info("User %s (%s) started bot", user.id, user.username)
 
     context = OnboardingContext(
         tg_id=user.id,
@@ -34,7 +33,10 @@ async def on_start(
     )
     result = await use_case.execute(session, context)
 
-    await message.answer(result.text, reply_markup=onboarding_kb(result))
+    keyboard = onboarding_kb(result)
+    if catalogue_button is not None:
+        keyboard.inline_keyboard.append([catalogue_button])
+    await message.answer(result.text, reply_markup=keyboard)
     if result.status == SubscriptionStatus.SUBSCRIBED:
         logger.info("Lead magnet access granted to user %s", user.id)
 
@@ -61,7 +63,19 @@ async def on_check_subscription(
     message = callback.message
     if isinstance(message, Message):
         try:
-            await message.edit_text(result.text, reply_markup=onboarding_kb(result))
+            keyboard = onboarding_kb(result)
+            if message.reply_markup is not None:
+                # Extra actions from the original /start stay tied to that touch.
+                legacy_callback = CheckSubCb(action="check").pack()
+                for row in message.reply_markup.inline_keyboard:
+                    extras = [
+                        button
+                        for button in row
+                        if button.callback_data and button.callback_data != legacy_callback
+                    ]
+                    if extras:
+                        keyboard.inline_keyboard.append(extras)
+            await message.edit_text(result.text, reply_markup=keyboard)
         except TelegramBadRequest as exc:
             if "message is not modified" not in str(exc):
                 logger.warning(

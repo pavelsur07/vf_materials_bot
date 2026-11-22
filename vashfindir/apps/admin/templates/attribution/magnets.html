@@ -1,0 +1,18 @@
+{% extends "attribution/base.html" %}
+{% from "attribution/macros.html" import csrf %}
+{% block section %}
+<h1>Лид-магниты</h1>
+<a href="/admin/attribution/magnets/new" role="button">Добавить лид-магнит</a>
+{% if sent == 'ok' %}<p class="ok">Материал отправлен в Telegram.</p>{% elif sent == 'error' %}<p class="error">Не удалось отправить материал в Telegram.</p>{% endif %}
+{% if rows %}
+<div class="overflow-auto"><table>
+  <thead><tr><th>Префикс</th><th>Название</th><th>Тип</th><th>Статус</th><th>Ссылок</th><th>Выдач за 30 дней</th><th>Проверка</th></tr></thead>
+  <tbody>{% for magnet, links, delivered in rows %}
+    <tr><td><code>{{ magnet.prefix }}</code></td><td><a href="/admin/attribution/magnets/{{ magnet.id }}">{{ magnet.name }}</a></td>
+      <td>{{ {'text':'Текст','link':'Ссылка','file':'Файл'}[magnet.content_type] }}</td>
+      <td>{{ 'Активен' if magnet.is_active else 'Неактивен' }}</td><td>{{ links }}</td><td>{{ delivered }}</td>
+      <td><form method="post" action="/admin/attribution/magnets/{{ magnet.id }}/preview">{{ csrf(csrf_token) }}<button type="submit" class="secondary">Отправить мне</button></form></td></tr>
+  {% endfor %}</tbody>
+</table></div>
+{% else %}<p>Лид-магнитов пока нет.</p>{% endif %}
+{% endblock %}
