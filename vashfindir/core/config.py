@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import Field, field_validator
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -44,6 +44,12 @@ class Settings(BaseSettings):
 
     # Фоновый воркер (python -m vashfindir.apps.worker): забирает задачи из очереди jobs
     worker_enabled: bool = False
+
+    attribution_enabled: bool = False
+    attribution_bootstrap_admin_tg_ids: list[int] = Field(default_factory=list)
+    attribution_secret_key: SecretStr = SecretStr("")
+    attribution_magnet_dir: str = "./data/lead_magnets"
+    attribution_bot_username: str = ""
 
     # Генерация изображений слайдов; пустые URL и ключ включают mock-режим
     image_provider_url: str = ""
