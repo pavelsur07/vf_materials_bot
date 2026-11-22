@@ -39,12 +39,23 @@ async def on_start(
             payload=command.args,
         ),
     )
-    if touch.magnet is not None:
-        await send_selected(message, user.id, touch.touch_id, touch.magnet, session, attribution)
-    elif touch.code_status == "direct":
-        catalogue = await attribution.catalogue(session)
-        button = catalog_button(touch.touch_id) if catalogue.magnets else None
-        await legacy_start(message, session, use_case, catalogue_button=button)
-        await finish_delivery(session, user.id, touch.touch_id)
-    else:
-        await show_catalogue(message, user.id, touch, session, attribution)
+    delivered = False
+    try:
+        if touch.magnet is not None:
+            delivered = await send_selected(
+                message,
+                user.id,
+                touch.touch_id,
+                touch.magnet,
+                session,
+                attribution,
+            )
+        elif touch.code_status == "direct":
+            catalogue = await attribution.catalogue(session)
+            button = catalog_button(touch.touch_id) if catalogue.magnets else None
+            await legacy_start(message, session, use_case, catalogue_button=button)
+            await finish_delivery(session, user.id, touch.touch_id)
+        else:
+            await show_catalogue(message, user.id, touch, session, attribution)
+    finally:
+        await attribution.notify_unknown(session, touch, user.username, delivered)

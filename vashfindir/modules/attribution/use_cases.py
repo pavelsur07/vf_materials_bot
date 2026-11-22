@@ -9,6 +9,7 @@ from vashfindir.domain.attribution.touches import finish_delivery, register_touc
 from vashfindir.domain.subscription import SubscriptionStatus, classify_member_status
 from vashfindir.integrations.telegram import TelegramChannelAdapter
 from vashfindir.integrations.telegram_delivery import DeliveryResult, TelegramDelivery
+from vashfindir.modules.attribution.notifications import AttributionNotifications
 
 
 class Catalogue(BaseModel):
@@ -22,10 +23,12 @@ class AttributionUseCase:
         settings: Settings,
         telegram: TelegramChannelAdapter,
         delivery: TelegramDelivery,
+        notifications: AttributionNotifications | None = None,
     ) -> None:
         self.settings = settings
         self._telegram = telegram
         self._delivery = delivery
+        self._notifications = notifications
 
     async def register(self, session: AsyncSession, data: StartRequest) -> StartResult:
         async with session.begin():
@@ -65,4 +68,18 @@ class AttributionUseCase:
             delivered=outcome.status == "sent",
             blocked=outcome.status == "blocked",
         )
+        if outcome.status == "file_error" and self._notifications is not None:
+            await self._notifications.file_error(
+                session, magnet, outcome.reason or "Файл недоступен."
+            )
         return outcome
+
+    async def notify_unknown(
+        self,
+        session: AsyncSession,
+        touch: StartResult,
+        username: str | None,
+        delivered: bool,
+    ) -> None:
+        if self._notifications is not None:
+            await self._notifications.unknown(session, touch, username, delivered)

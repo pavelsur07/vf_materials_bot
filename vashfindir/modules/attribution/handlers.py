@@ -30,10 +30,12 @@ async def show_catalogue(
 ) -> None:
     catalogue = await attribution.catalogue(session)
     await message.answer(
-        catalogue.greeting if catalogue.magnets else f"{catalogue.greeting}\n\n{NO_MAGNETS}",
+        catalogue.greeting,
         parse_mode=None,
         reply_markup=catalog_kb(touch.touch_id, catalogue.magnets) if catalogue.magnets else None,
     )
+    if not catalogue.magnets:
+        await message.answer(NO_MAGNETS, parse_mode=None)
     await finish_delivery(session, tg_id, touch.touch_id)
 
 
@@ -44,18 +46,19 @@ async def send_selected(
     magnet: MagnetContent,
     session: AsyncSession,
     attribution: AttributionUseCase,
-) -> None:
+) -> bool:
     if not await attribution.check_subscription(tg_id):
         await message.answer(
             SUBSCRIBE_TO_RECEIVE,
             reply_markup=subscribe_kb(attribution.settings.channel_url, touch_id),
         )
         await finish_delivery(session, tg_id, touch_id)
-        return
+        return False
 
     outcome = await attribution.deliver(session, tg_id, message.chat.id, touch_id, magnet)
     if outcome.status not in ("sent", "blocked"):
         await message.answer(DELIVERY_ERROR)
+    return outcome.status == "sent"
 
 
 @router.callback_query(AttributionAction.filter())

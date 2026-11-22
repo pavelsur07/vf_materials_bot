@@ -4,6 +4,7 @@ import logging
 import signal
 from collections.abc import Awaitable, Callable
 
+from aiogram import Bot
 from aiohttp import ClientSession
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,10 +20,13 @@ from vashfindir.core.config import Settings, get_settings
 from vashfindir.core.glitchtip import init_glitchtip
 from vashfindir.db.session import create_session_factory
 from vashfindir.domain.attribution.bitrix_queue import BITRIX_JOB
-from vashfindir.domain.jobs import claim_due_job, complete_job, ensure_scheduled, fail_job
+from vashfindir.domain.attribution.summary import SUMMARY_JOB, enqueue_daily_summary
+from vashfindir.domain.jobs import claim_due_job, complete_job, ensure_scheduled, fail_job, utcnow
 from vashfindir.integrations.bitrix24 import BitrixClient
 from vashfindir.integrations.image_generator_factory import create_image_generator
+from vashfindir.integrations.telegram_delivery import TelegramDelivery
 from vashfindir.modules.attribution.bitrix_sync import BitrixSync, enqueue_bitrix_work
+from vashfindir.modules.attribution.notifications import AttributionNotifications
 
 logger = logging.getLogger(__name__)
 
@@ -80,16 +84,36 @@ async def run_loop(
 async def _run(settings: Settings) -> None:
     stop = asyncio.Event()
     asyncio.get_running_loop().add_signal_handler(signal.SIGTERM, stop.set)
-    async with ClientSession() as http_session:
+    async with contextlib.AsyncExitStack() as stack:
+        http_session = await stack.enter_async_context(ClientSession())
         image_generator = create_image_generator(settings, http_session)
         handlers = build_handlers(image_generator)
         reconcile = None
         if settings.attribution_enabled:
-            bitrix_sync = BitrixSync(BitrixClient(http_session), settings.attribution_secret_key)
+            notifications = None
+            if settings.bot_token:
+                bot = await stack.enter_async_context(Bot(settings.bot_token).context())
+                delivery = TelegramDelivery(bot, settings.attribution_magnet_dir)
+                notifications = AttributionNotifications(
+                    settings.attribution_bootstrap_admin_tg_ids, delivery
+                )
+                handlers[SUMMARY_JOB] = notifications.summary_job
+            bitrix_sync = BitrixSync(
+                BitrixClient(http_session),
+                settings.attribution_secret_key,
+                notifications,
+            )
             handlers[BITRIX_JOB] = bitrix_sync.handle_job
 
             async def reconcile_attribution(session: AsyncSession) -> None:
                 await enqueue_bitrix_work(session, settings.attribution_secret_key)
+                if notifications is not None:
+                    async with session.begin():
+                        await enqueue_daily_summary(
+                            session,
+                            settings.attribution_bootstrap_admin_tg_ids,
+                            utcnow(),
+                        )
 
             reconcile = reconcile_attribution
         await run_loop(stop, handlers, reconcile)

@@ -12,6 +12,7 @@ from vashfindir.domain.attribution.dto import MagnetContent
 
 class DeliveryResult(BaseModel):
     status: Literal["sent", "blocked", "file_error", "telegram_error"]
+    reason: str | None = None
 
 
 class TelegramDelivery:
@@ -45,10 +46,14 @@ class TelegramDelivery:
             if "bot was blocked" in str(exc).lower():
                 return DeliveryResult(status="blocked")
             return DeliveryResult(status="telegram_error")
-        except (TelegramAPIError, OSError):
-            return DeliveryResult(
-                status="file_error" if magnet.content_type == "file" else "telegram_error"
-            )
+        except OSError:
+            return DeliveryResult(status="file_error", reason="Локальный файл недоступен.")
+        except TelegramAPIError:
+            if magnet.content_type == "file":
+                return DeliveryResult(
+                    status="file_error", reason="Telegram отклонил отправку файла."
+                )
+            return DeliveryResult(status="telegram_error")
         return DeliveryResult(status="sent")
 
     async def bot_username(self) -> str | None:

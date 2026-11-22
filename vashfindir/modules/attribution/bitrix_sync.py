@@ -20,6 +20,7 @@ from vashfindir.domain.attribution.bitrix_settings import (
 )
 from vashfindir.domain.jobs import utcnow
 from vashfindir.integrations.bitrix24 import BitrixClient, BitrixError
+from vashfindir.modules.attribution.notifications import AttributionNotifications
 
 _ORIGINATOR = "vashfindir_materials"
 
@@ -46,9 +47,15 @@ async def enqueue_bitrix_work(session: AsyncSession, key: SecretStr) -> int:
 
 
 class BitrixSync:
-    def __init__(self, gateway: BitrixClient, key: SecretStr) -> None:
+    def __init__(
+        self,
+        gateway: BitrixClient,
+        key: SecretStr,
+        notifications: AttributionNotifications | None = None,
+    ) -> None:
         self._gateway = gateway
         self._key = key
+        self._notifications = notifications
 
     async def _ensure_lead(
         self,
@@ -170,4 +177,12 @@ class BitrixSync:
         touch_id = raw.get("touch_id")
         if isinstance(touch_id, bool) or not isinstance(touch_id, int) or touch_id <= 0:
             raise ValueError("Invalid Bitrix touch identifier")
-        await self.handle_touch(session, touch_id)
+        event = await self.handle_touch(session, touch_id)
+        if event is not None and self._notifications is not None:
+            await self._notifications.bitrix(
+                session,
+                event.touch_id,
+                event.error,
+                event.old_lead,
+                event.new_lead,
+            )
