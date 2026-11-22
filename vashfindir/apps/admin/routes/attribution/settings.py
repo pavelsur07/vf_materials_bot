@@ -19,7 +19,12 @@ from vashfindir.domain.attribution.bitrix_settings import (
     load_fields,
     save_connection,
 )
-from vashfindir.domain.attribution.settings import get_preferences, save_preferences
+from vashfindir.domain.attribution.settings import (
+    AttributionPreferences,
+    PreferencesError,
+    get_preferences,
+    save_preferences,
+)
 
 router = APIRouter()
 
@@ -32,8 +37,6 @@ async def settings_page(request: Request, session: Database, _: Actor) -> Respon
 
 @router.post("/settings")
 async def change_settings(request: Request, session: Database, actor: Actor) -> Response:
-    from vashfindir.domain.attribution.settings import AttributionPreferences
-
     await verify_csrf(request)
     admins = config(request).attribution_bootstrap_admin_tg_ids
     raw: dict[str, object] = dict(await form_data(request))
@@ -55,7 +58,17 @@ async def change_settings(request: Request, session: Database, actor: Actor) -> 
             preferences=old,
             error="Проверьте Telegram ID, часовой пояс, время, интервал и порог.",
         )
-    await save_preferences(session, preferences, admins, actor)
+    try:
+        await save_preferences(session, preferences, admins, actor)
+    except PreferencesError as exc:
+        await session.rollback()
+        return render(
+            request,
+            "settings",
+            status_code=409,
+            preferences=preferences,
+            error=str(exc),
+        )
     await session.commit()
     return RedirectResponse(f"{PREFIX}/settings", 303)
 

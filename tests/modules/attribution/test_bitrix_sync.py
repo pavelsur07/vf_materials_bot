@@ -124,3 +124,31 @@ async def test_five_retries_then_error(session: AsyncSession) -> None:
     assert row.bitrix_attempts == 6
     assert row.bitrix_next_attempt_at is None
     assert "network_error" in row.bitrix_error
+
+
+async def test_reset_creates_distinct_test_lead_without_reusing_old_origin(
+    session: AsyncSession,
+) -> None:
+    from vashfindir.domain.attribution.reset import reset_test_user
+    from vashfindir.domain.attribution.settings import AttributionPreferences, save_preferences
+    from vashfindir.modules.attribution.bitrix_sync import BitrixSync
+
+    await configure(session)
+    async with session.begin():
+        await save_preferences(
+            session, AttributionPreferences(admin_ids=[10], test_ids=[100]), [10], 10
+        )
+    request = StartRequest(tg_id=100, first_name="Тест")
+    transport = AsyncMock()
+    transport.find_lead.return_value = None
+    transport.add_lead.side_effect = [543, 544]
+    sync = BitrixSync(transport, KEY)
+    first = await register_touch(session, request)
+    await sync.handle_touch(session, first.touch_id)
+    async with session.begin():
+        assert await reset_test_user(session, 100, [10], actor=10) == 1
+    second = await register_touch(session, request)
+    await sync.handle_touch(session, second.touch_id)
+    one, two = [call.args[1] for call in transport.add_lead.await_args_list]
+    assert one["TITLE"] == two["TITLE"] == "[ТЕСТ] Telegram: Тест"
+    assert one["ORIGIN_ID"] != two["ORIGIN_ID"]

@@ -154,3 +154,27 @@ async def test_authenticated_csv_download_keeps_session_open(admin) -> None:
     assert csv.status_code == 200
     assert csv.headers["Content-Disposition"] == 'attachment; filename="touches.csv"'
     assert csv.content.startswith(b"\xef\xbb\xbftouch_id,created_at,tg_id")
+
+
+async def test_reset_is_accessible_only_for_allowlisted_test_ids(admin) -> None:
+    from vashfindir.domain.attribution.dto import StartRequest
+    from vashfindir.domain.attribution.settings import AttributionPreferences, save_preferences
+    from vashfindir.domain.attribution.touches import register_touch
+
+    client, factory = admin
+    await authenticate(client, factory)
+    async with factory.begin() as session:
+        await save_preferences(
+            session, AttributionPreferences(admin_ids=[123], test_ids=[456]), [123], 123
+        )
+    async with factory() as session:
+        await register_touch(session, StartRequest(tg_id=456, first_name="Тест"))
+    page = await client.get("/admin/attribution/test-users")
+    assert "Сбросить тестового пользователя" in page.text
+    data = {"csrf_token": csrf(page.text)}
+    assert (
+        await client.post("/admin/attribution/test-users/123/reset", data=data)
+    ).status_code == 409
+    assert (
+        await client.post("/admin/attribution/test-users/456/reset", data=data)
+    ).status_code == 303

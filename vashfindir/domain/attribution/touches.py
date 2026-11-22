@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from vashfindir.db.models import AttributionLink, LeadMagnet, Touch, User
 from vashfindir.domain.attribution.dto import UTM_FIELDS, MagnetContent, StartRequest, StartResult
-from vashfindir.domain.attribution.settings import AttributionPreferences
+from vashfindir.domain.attribution.settings import AttributionPreferences, get_preferences
 from vashfindir.domain.jobs import utcnow
 
 _PAYLOAD = re.compile(r"[A-Za-z0-9_-]{1,64}")
@@ -33,9 +33,9 @@ async def register_touch(
     preferences: AttributionPreferences | None = None,
     *,
     now: datetime | None = None,
+    bootstrap_admins: list[int] | None = None,
 ) -> StartResult:
     now = now or utcnow()
-    preferences = preferences or AttributionPreferences()
     payload = data.payload or None
     digest = sha256((payload or "").encode()).hexdigest()
     async with session.begin():
@@ -44,6 +44,8 @@ async def register_touch(
         new_id = await session.scalar(
             statement.on_conflict_do_nothing(index_elements=[User.tg_id]).returning(User.id)
         )
+        if preferences is None:
+            preferences = await get_preferences(session, bootstrap_admins or [])
         user = (await session.scalars(select(User).where(User.tg_id == data.tg_id))).one()
         user.username = data.username
         user.first_name = data.first_name

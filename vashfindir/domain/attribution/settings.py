@@ -2,10 +2,11 @@ from datetime import time
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import Field, field_validator
+from sqlalchemy import select, update
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from vashfindir.db.models import AttributionSetting
+from vashfindir.db.models import AttributionSetting, Touch
 from vashfindir.domain.attribution.audit import record_change
 from vashfindir.domain.attribution.dto import FormValues, TelegramID
 
@@ -60,10 +61,32 @@ async def get_preferences(
     return AttributionPreferences.model_validate_json(raw)
 
 
+class PreferencesError(ValueError):
+    pass
+
+
 async def save_preferences(
     session: AsyncSession, data: AttributionPreferences, bootstrap_admins: list[int], actor: int
 ) -> None:
+    await session.execute(
+        update(AttributionSetting)
+        .where(AttributionSetting.key == "preferences")
+        .values(value=AttributionSetting.value)
+    )
     old = await get_preferences(session, bootstrap_admins)
+    old_tests, new_tests = set(old.test_ids), set(data.test_ids)
+    for ids, test_mode, message in (
+        (new_tests - old_tests, False, "Для тестов выберите ID без боевых касаний."),
+        (old_tests - new_tests, True, "Сбросьте историю тестового пользователя перед исключением."),
+    ):
+        if (
+            ids
+            and await session.scalar(
+                select(Touch.id).where(Touch.tg_id.in_(ids), Touch.is_test.is_(test_mode)).limit(1)
+            )
+            is not None
+        ):
+            raise PreferencesError(message)
     await put_setting(session, "preferences", data.model_dump_json())
     record_change(
         session,

@@ -31,11 +31,11 @@ class AttributionUseCase:
         self._notifications = notifications
 
     async def register(self, session: AsyncSession, data: StartRequest) -> StartResult:
-        async with session.begin():
-            preferences = await get_preferences(
-                session, self.settings.attribution_bootstrap_admin_tg_ids
-            )
-        return await register_touch(session, data, preferences)
+        return await register_touch(
+            session,
+            data,
+            bootstrap_admins=self.settings.attribution_bootstrap_admin_tg_ids,
+        )
 
     async def catalogue(self, session: AsyncSession) -> Catalogue:
         async with session.begin():

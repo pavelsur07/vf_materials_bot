@@ -5,7 +5,7 @@
   <ul>
     {% for path, label in [('magnets', 'Лид-магниты'), ('dictionaries', 'Справочники'), ('links', 'Ссылки'),
                            ('touches', 'Касания'), ('exports', 'Выгрузки'), ('settings', 'Настройки'),
-                           ('bitrix', 'Bitrix24')] %}
+                           ('bitrix', 'Bitrix24'), ('test-users', 'Тестовые пользователи')] %}
     <li><a href="/admin/attribution/{{ path }}"{% if request.url.path.startswith('/admin/attribution/' ~ path) %} aria-current="page"{% endif %}>{{ label }}</a></li>
     {% endfor %}
   </ul>
