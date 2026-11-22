@@ -1,0 +1,26 @@
+{% extends "attribution/base.html" %}
+{% from "attribution/macros.html" import csrf %}
+{% block section %}
+<h1>Bitrix24</h1>
+{% if connected %}<p class="ok">Вебхук сохранён. Очередь обрабатывается при запущенном воркере.</p>
+{% else %}<p>Вебхук не настроен. Касания ждут подключения.</p>{% endif %}
+<form method="post">
+  {{ csrf(csrf_token) }}
+  <label>HTTPS URL входящего вебхука
+    <input type="password" name="webhook" autocomplete="new-password" placeholder="https://портал/rest/ID/КЛЮЧ/">
+  </label>
+  <small>Оставьте поле пустым, чтобы сохранить текущий вебхук.</small>
+  <label>Код источника (SOURCE_ID)<input name="source_id" value="{{ fields.source_id|default('') }}" required maxlength="64"></label>
+  {% for key, label in [('telegram_id', 'Telegram ID'), ('telegram_username', 'Telegram username'),
+                        ('first_touch', 'Код первого касания'), ('last_touch', 'Код последнего касания'),
+                        ('magnets', 'Лид-магниты')] %}
+    <label>{{ label }}<input name="{{ key }}" value="{{ fields[key]|default('') }}" placeholder="UF_CRM_…" required maxlength="64"></label>
+  {% endfor %}
+  <button type="submit">Сохранить</button>
+</form>
+{% if connected %}
+<form method="post" action="/admin/attribution/bitrix/disconnect">
+  {{ csrf(csrf_token) }}<button class="secondary" type="submit">Отключить Bitrix24</button>
+</form>
+{% endif %}
+{% endblock %}

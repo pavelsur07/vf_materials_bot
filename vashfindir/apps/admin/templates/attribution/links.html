@@ -1,0 +1,39 @@
+{% extends "attribution/base.html" %}
+{% from "attribution/macros.html" import pager %}
+{% block section %}
+<h1>Реестр ссылок</h1>
+<a href="/admin/attribution/links/new" role="button">Создать ссылку</a>
+<form method="get">
+  <div class="grid">
+    <label>Поиск <input name="search" value="{{ filters.search or '' }}" placeholder="Код, кампания, место"></label>
+    <label>Лид-магнит <select name="magnet_id"><option value="">Все</option>
+      {% for magnet in magnets %}<option value="{{ magnet.id }}"{% if filters.magnet_id == magnet.id %} selected{% endif %}>{{ magnet.name }}</option>{% endfor %}
+    </select></label>
+    {% for prop, label, entries in [('source','Источник',sources),('medium','Канал',mediums)] %}
+    <label>{{ label }} <select name="{{ prop }}"><option value="">Все</option>
+      {% for entry in entries %}<option value="{{ entry.value }}"{% if filters[prop] == entry.value %} selected{% endif %}>{{ entry.label }}</option>{% endfor %}
+    </select></label>
+    {% endfor %}
+  </div>
+  <div class="grid">
+    <label>Статус <select name="status"><option value="">Все</option>
+      {% for key, label in [('active','Активна'),('paused','Пауза'),('archived','В архиве')] %}<option value="{{ key }}"{% if filters.status == key %} selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select></label>
+    <label>Создана с <input type="date" name="start" value="{{ filters.start or '' }}"></label>
+    <label>Создана по <input type="date" name="end" value="{{ filters.end or '' }}"></label>
+    <div><button type="submit" class="secondary">Применить</button></div>
+  </div>
+</form>
+{% if rows %}
+<div class="overflow-auto"><table>
+<thead><tr><th>Код</th><th>Магнит</th><th>Источник / канал</th><th>Кампания</th><th>Размещение</th><th>Статус</th><th>Касаний</th><th>Новых</th><th>Последнее (UTC)</th></tr></thead>
+<tbody>{% for link, magnet, count, new, last in rows %}
+  <tr><td><a href="/admin/attribution/links/{{ link.id }}">{{ link.code }}</a></td><td>{{ magnet }}</td>
+  <td>{{ link.utm_source }} / {{ link.utm_medium }}</td><td>{{ link.utm_campaign }}</td><td>{{ link.placement }}</td>
+  <td>{{ {'active':'Активна','paused':'Пауза','archived':'В архиве'}[link.status] }}</td>
+  <td>{{ count }}</td><td>{{ new }}</td><td>{{ last or '—' }}</td></tr>
+{% endfor %}</tbody>
+</table></div>
+{% else %}<p>Ссылок по этим параметрам нет.</p>{% endif %}
+{{ pager(request, page, next_page) }}
+{% endblock %}

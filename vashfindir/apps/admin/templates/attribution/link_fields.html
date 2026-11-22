@@ -1,0 +1,12 @@
+{% macro mutable_fields(values) %}
+<label>Место размещения <input name="placement" maxlength="255" required value="{{ values.placement|default('', true) }}"></label>
+<div class="grid">
+  <label>Период с <input type="date" name="period_start" value="{{ values.period_start|default('', true) }}"></label>
+  <label>Период по <input type="date" name="period_end" value="{{ values.period_end|default('', true) }}"></label>
+  <label>Бюджет <input type="number" name="budget" min="0" max="9999999999.99" step="0.01" value="{{ values.budget if values.budget is defined and values.budget is not none else '' }}"></label>
+  <label>Статус <select name="status">
+    {% for key, label in [('active','Активна'),('paused','Пауза'),('archived','В архиве')] %}<option value="{{ key }}"{% if values.status == key %} selected{% endif %}>{{ label }}</option>{% endfor %}
+  </select></label>
+</div>
+<label>Комментарий <textarea name="comment" maxlength="4000">{{ values.comment|default('', true) }}</textarea></label>
+{% endmacro %}

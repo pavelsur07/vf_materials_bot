@@ -18,6 +18,8 @@ dependencies = [
     "itsdangerous>=2.2",
     "pillow>=10.0",
     "python-multipart>=0.0.20",
+    "qrcode>=8.2",
+    "cryptography>=45",
 ]
 
 [dependency-groups]

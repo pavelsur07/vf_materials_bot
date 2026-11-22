@@ -1,0 +1,36 @@
+{% extends "attribution/base.html" %}
+{% from "attribution/macros.html" import csrf %}
+{% from "attribution/link_fields.html" import mutable_fields %}
+{% block section %}
+<h1>{{ link.code }}</h1>
+{% if url %}
+<label>Ссылка <input id="deep-link" value="{{ url }}" readonly></label>
+<button type="button" id="copy-link" class="secondary">Скопировать</button>
+<p id="copy-status" role="status"></p>
+<a href="/admin/attribution/links/{{ link.id }}/qr.png" download="{{ link.code }}.png">
+  <img src="/admin/attribution/links/{{ link.id }}/qr.png" alt="QR-код для {{ link.code }}" width="140" height="140"> Скачать PNG
+</a>
+<script>
+document.getElementById("copy-link").addEventListener("click", async () => {
+  const field = document.getElementById("deep-link");
+  const status = document.getElementById("copy-status");
+  try {
+    await navigator.clipboard.writeText(field.value);
+    status.textContent = "Ссылка скопирована.";
+  } catch {
+    field.select();
+    status.textContent = "Скопируйте выделенную ссылку.";
+  }
+});
+</script>
+{% else %}<p>Имя бота пока неизвестно. Укажите ATTRIBUTION_BOT_USERNAME или проверьте подключение к Telegram.</p>{% endif %}
+<p>Допишите код в название объявления в рекламном кабинете.</p>
+<p><a href="/admin/attribution/links/new?copy={{ link.id }}">Создать копию</a></p>
+<dl>
+  <dt>Лид-магнит</dt><dd>{{ magnet.name }}</dd>
+  {% for key in ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'] %}
+  <dt>{{ key }}</dt><dd>{{ link[key] or '—' }}</dd>
+  {% endfor %}
+</dl>
+<form method="post">{{ csrf(csrf_token) }}{{ mutable_fields(link) }}<button type="submit">Сохранить</button></form>
+{% endblock %}

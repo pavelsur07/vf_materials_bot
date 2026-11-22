@@ -1,0 +1,7 @@
+{% macro csrf(token) %}<input type="hidden" name="csrf_token" value="{{ token }}">{% endmacro %}
+{% macro pager(request, page, next_page) %}
+<nav aria-label="Страницы">
+  {% if page > 1 %}<a href="{{ request.url.include_query_params(page=page-1) }}">Предыдущая</a>{% endif %}
+  {% if next_page %}<a href="{{ request.url.include_query_params(page=page+1) }}">Следующая</a>{% endif %}
+</nav>
+{% endmacro %}

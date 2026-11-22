@@ -19,6 +19,8 @@
 - ruff — линтер и форматтер, mypy — строгая типизация
 - pytest + pytest-asyncio — тесты
 - Pillow (PIL) — чтение, валидация и нормализация PNG-изображений
+- qrcode — локальная генерация QR PNG для deep links.
+- cryptography (Fernet) — шифрование вебхука Bitrix24, сохранённого из админки.
 - sentry-sdk — отправка ошибок в GlitchTip/Sentry
 - FastAPI + uvicorn + Jinja2 — веб-сервисы (`vashfindir/apps/admin/`,
   `vashfindir/apps/api/`, отдельные процессы)

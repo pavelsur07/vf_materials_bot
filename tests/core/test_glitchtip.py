@@ -23,6 +23,8 @@ def test_init_glitchtip_initializes_with_dsn() -> None:
             dsn="https://key@glitchtip.example.com/1",
             environment="staging",
             traces_sample_rate=0.5,
+            max_request_body_size="never",
+            include_local_variables=False,
         )
 
 
@@ -34,4 +36,6 @@ def test_init_glitchtip_uses_defaults() -> None:
             dsn="https://key@glitchtip.example.com/1",
             environment="production",
             traces_sample_rate=0.0,
+            max_request_body_size="never",
+            include_local_variables=False,
         )

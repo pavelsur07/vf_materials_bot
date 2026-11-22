@@ -12,4 +12,6 @@ def init_glitchtip(settings: Settings) -> None:
         dsn=settings.glitchtip_dsn,
         environment=settings.glitchtip_environment,
         traces_sample_rate=settings.glitchtip_traces_sample_rate,
+        max_request_body_size="never",
+        include_local_variables=False,
     )

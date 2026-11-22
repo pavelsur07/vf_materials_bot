@@ -1,0 +1,17 @@
+{% extends "attribution/base.html" %}
+{% from "attribution/macros.html" import csrf %}
+{% block section %}
+<h1>Настройки атрибуции</h1>
+<form method="post">
+  {{ csrf(csrf_token) }}
+  <label>Telegram ID администраторов <input name="admin_ids" value="{{ preferences.admin_ids|join(', ') }}" required></label>
+  <label>Telegram ID тестовых пользователей <input name="test_ids" value="{{ preferences.test_ids|join(', ') }}"></label>
+  <label>ID служебного чата <input type="number" name="service_chat_id" value="{{ preferences.service_chat_id or '' }}"></label>
+  <label>Приветствие <textarea name="greeting" required maxlength="4096">{{ preferences.greeting }}</textarea></label>
+  <label>Защита от повторного клика, минут <input type="number" name="dedup_minutes" min="0" max="1440" value="{{ preferences.dedup_minutes }}" required></label>
+  <label>Часовой пояс <input name="timezone" value="{{ preferences.timezone }}" required></label>
+  <label>Время сводки <input type="time" name="summary_time" value="{{ preferences.summary_time.strftime('%H:%M') }}" required></label>
+  <label>Порог direct + unknown, % <input type="number" name="warning_percent" min="0" max="100" value="{{ preferences.warning_percent }}" required></label>
+  <button type="submit">Сохранить</button>
+</form>
+{% endblock %}

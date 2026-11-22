@@ -206,3 +206,11 @@ class AttributionSetting(Base):
 
     key: Mapped[str] = mapped_column(String(64), primary_key=True)
     value: Mapped[str] = mapped_column(Text)
+
+
+class AttributionAdminChallenge(Base):
+    __tablename__ = "attribution_admin_challenges"
+
+    digest: Mapped[str] = mapped_column(String(64), primary_key=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    approved_by: Mapped[int | None] = mapped_column(BigInteger)

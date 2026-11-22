@@ -10,8 +10,9 @@ from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import PlainTextResponse
 
 from vashfindir.apps.admin.auth import AuthMiddleware
-from vashfindir.apps.admin.routes import auth_pages, leads, pages, slides
+from vashfindir.apps.admin.routes import attribution, auth_pages, leads, pages, slides
 from vashfindir.core.config import Settings
+from vashfindir.integrations.telegram_delivery import TelegramDelivery
 from vashfindir.modules.leads.use_cases import NotifyLeadUseCase
 from vashfindir.modules.slides.use_cases import QueueSlideGenerationUseCase
 
@@ -45,6 +46,11 @@ def create_admin_app(
     app.state.templates = Jinja2Templates(directory=TEMPLATES_DIR)
     app.state.lead_notify_use_case = lead_notify_use_case
     app.state.slide_generation_use_case = slide_generation_use_case
+    app.state.attribution_delivery = (
+        TelegramDelivery(telegram_bot, settings.attribution_magnet_dir)
+        if telegram_bot is not None
+        else None
+    )
 
     # Starlette runs the last added middleware first, so SessionMiddleware
     # wraps AuthMiddleware and request.session is already populated there.
@@ -60,6 +66,7 @@ def create_admin_app(
     app.include_router(pages.router)
     app.include_router(leads.router)
     app.include_router(slides.router)
+    app.include_router(attribution.router)
 
     @app.get("/admin/health")
     async def health() -> PlainTextResponse:

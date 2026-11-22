@@ -1,0 +1,31 @@
+{% extends "attribution/base.html" %}
+{% from "attribution/macros.html" import csrf %}
+{% block section %}
+<h1>Справочники меток</h1>
+<nav><ul>
+  <li><a href="?kind=source"{% if kind == 'source' %} aria-current="page"{% endif %}>Источник (source)</a></li>
+  <li><a href="?kind=medium"{% if kind == 'medium' %} aria-current="page"{% endif %}>Канал (medium)</a></li>
+</ul></nav>
+{% for entry in entries %}
+<form method="post" action="/admin/attribution/dictionaries/{{ kind }}/{{ entry.id }}">
+  {{ csrf(csrf_token) }}
+  <div class="grid">
+    <label>Метка <input value="{{ entry.value }}" disabled></label>
+    <label>Название <input name="label" value="{{ entry.label }}" required maxlength="100"></label>
+    <label>Порядок <input type="number" name="sort" value="{{ entry.sort }}" required></label>
+    <label><input type="checkbox" name="is_active"{% if entry.is_active %} checked{% endif %}>Активна</label>
+    <button class="secondary" type="submit">Сохранить</button>
+  </div>
+</form>
+{% endfor %}
+<h2>Добавить метку</h2>
+<form method="post" action="/admin/attribution/dictionaries/{{ kind }}">
+  {{ csrf(csrf_token) }}
+  <label>Метка <input name="value" required maxlength="32" pattern="[A-Za-z0-9_]{1,32}"></label>
+  <small>Допустимы латинские буквы, цифры и подчёркивания.</small>
+  <label>Название <input name="label" required maxlength="100"></label>
+  <label>Порядок <input type="number" name="sort" value="0" required></label>
+  <label><input type="checkbox" name="is_active" checked>Активна</label>
+  <button type="submit">Добавить</button>
+</form>
+{% endblock %}

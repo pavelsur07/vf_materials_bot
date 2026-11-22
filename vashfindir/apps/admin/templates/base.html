@@ -72,6 +72,10 @@
       <a href="/admin/slides"
          class="header-tab{% if current_path != '/admin/' and current_path.startswith('/admin/slides') %} active{% endif %}"
          {% if current_path != '/admin/' and current_path.startswith('/admin/slides') %}aria-current="page"{% endif %}>Слайды</a>
+      {% if request.app.state.settings.attribution_enabled %}
+      <a href="/admin/attribution"
+         class="header-tab{% if current_path.startswith('/admin/attribution') %} active{% endif %}">Атрибуция</a>
+      {% endif %}
     </nav>
     <form class="inline" method="post" action="/admin/logout" style="display: inline; margin: 0 0 0 1rem; float: right;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">

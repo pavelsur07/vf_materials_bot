@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+<nav aria-label="Атрибуция">
+  {% if request.session.get('attribution_tg_id') %}
+  <ul>
+    {% for path, label in [('magnets', 'Лид-магниты'), ('dictionaries', 'Справочники'), ('links', 'Ссылки'),
+                           ('touches', 'Касания'), ('exports', 'Выгрузки'), ('settings', 'Настройки'),
+                           ('bitrix', 'Bitrix24')] %}
+    <li><a href="/admin/attribution/{{ path }}"{% if request.url.path.startswith('/admin/attribution/' ~ path) %} aria-current="page"{% endif %}>{{ label }}</a></li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+</nav>
+{% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+{% block section %}{% endblock %}
+{% endblock %}

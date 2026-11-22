@@ -1,0 +1,32 @@
+{% extends "attribution/base.html" %}
+{% from "attribution/macros.html" import csrf %}
+{% from "attribution/link_fields.html" import mutable_fields %}
+{% block section %}
+<h1>Новая ссылка</h1>
+<form method="post">
+  {{ csrf(csrf_token) }}
+  <div class="grid">
+    <label>Лид-магнит <select name="lead_magnet_id" required><option value="">Выберите</option>
+      {% for magnet in magnets %}<option value="{{ magnet.id }}"{% if values.lead_magnet_id|string == magnet.id|string %} selected{% endif %}>{{ magnet.name }}</option>{% endfor %}
+    </select></label>
+    {% for field, label, entries in [('utm_source','Источник',sources),('utm_medium','Канал',mediums)] %}
+    <label>{{ label }} <select name="{{ field }}" required><option value="">Выберите</option>
+      {% for entry in entries %}<option value="{{ entry.value }}"{% if values[field] == entry.value %} selected{% endif %}>{{ entry.label }}</option>{% endfor %}
+    </select></label>
+    {% endfor %}
+  </div>
+  <label>Кампания <input name="utm_campaign" list="campaigns" maxlength="64" required value="{{ values.utm_campaign|default('', true) }}"></label>
+  <small>Шаблон: оффер_сегмент_месяц. Используйте латиницу.</small>
+  <datalist id="campaigns">{% for campaign in recent %}<option value="{{ campaign }}">{% endfor %}</datalist>
+  <div class="grid">
+    <label>Контент <input name="utm_content" maxlength="64" value="{{ values.utm_content|default('', true) }}"></label>
+    <label>Ключевое слово <input name="utm_term" maxlength="64" value="{{ values.utm_term|default('', true) }}"></label>
+  </div>
+  {{ mutable_fields(values) }}
+  {% if duplicate %}
+  <p><a href="/admin/attribution/links?search={{ duplicate }}">Найти существующую ссылку</a></p>
+  <label><input type="checkbox" name="confirm_duplicate" required>Создать вторую ссылку с комментарием</label>
+  {% endif %}
+  <button type="submit">Сохранить</button>
+</form>
+{% endblock %}

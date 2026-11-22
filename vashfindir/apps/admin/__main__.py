@@ -26,8 +26,9 @@ def main() -> None:
         )
     telegram_bot = None
     lead_notify_use_case = None
-    if settings.leads_chat_id:
+    if settings.leads_chat_id or (settings.attribution_enabled and settings.bot_token):
         telegram_bot = Bot(settings.bot_token)
+    if settings.leads_chat_id and telegram_bot is not None:
         telegram_adapter = TelegramChannelAdapter(telegram_bot)
         lead_notify_use_case = NotifyLeadUseCase(settings, telegram_adapter)
     slide_generation_use_case = QueueSlideGenerationUseCase(

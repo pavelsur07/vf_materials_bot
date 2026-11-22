@@ -1,10 +1,14 @@
-from aiogram import Router
+from aiogram import F, Router
+from aiogram.filters import Command, CommandObject
 from aiogram.types import CallbackQuery, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from vashfindir.domain.attribution.admin_access import approve_challenge
 from vashfindir.domain.attribution.dto import MagnetContent, StartResult
 from vashfindir.domain.attribution.touches import finish_delivery, get_touch, select_magnet
 from vashfindir.modules.attribution.dialogs import (
+    ADMIN_AUTH_FAILED,
+    ADMIN_AUTH_OK,
     CATALOG_EXPIRED,
     DELIVERY_ERROR,
     MAGNET_UNAVAILABLE,
@@ -83,3 +87,22 @@ async def on_attribution_action(
         return
     await callback.answer()
     await send_selected(callback.message, tg_id, touch.touch_id, magnet, session, attribution)
+
+
+@router.message(Command("admin_auth"), F.chat.type == "private")
+async def on_admin_auth(
+    message: Message,
+    command: CommandObject,
+    session: AsyncSession,
+    attribution: AttributionUseCase,
+) -> None:
+    if not attribution.settings.attribution_enabled or message.from_user is None:
+        return
+    async with session.begin():
+        approved = await approve_challenge(
+            session,
+            command.args or "",
+            message.from_user.id,
+            attribution.settings.attribution_bootstrap_admin_tg_ids,
+        )
+    await message.answer(ADMIN_AUTH_OK if approved else ADMIN_AUTH_FAILED, parse_mode=None)
