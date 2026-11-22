@@ -48,11 +48,6 @@ async def touches_page(
     )
 
 
-@router.get("/exports")
-async def exports_page(request: Request, _: Actor) -> Response:
-    return render(request, "exports", exports_available=False)
-
-
 @router.post("/touches/retry")
 @router.post("/touches/{touch_id:int}/retry")
 async def retry(

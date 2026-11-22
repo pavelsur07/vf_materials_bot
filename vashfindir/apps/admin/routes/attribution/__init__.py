@@ -1,7 +1,14 @@
 from fastapi import APIRouter
 
-from vashfindir.apps.admin.routes.attribution import access, catalog, links, settings, touches
+from vashfindir.apps.admin.routes.attribution import (
+    access,
+    catalog,
+    exports,
+    links,
+    settings,
+    touches,
+)
 
 router = APIRouter()
-for section in (access, catalog, links, touches, settings):
+for section in (access, catalog, links, touches, exports, settings):
     router.include_router(section.router, prefix=access.PREFIX)

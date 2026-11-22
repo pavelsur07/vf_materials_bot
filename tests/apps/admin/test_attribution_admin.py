@@ -145,3 +145,12 @@ async def test_link_creation_reports_duplicate_and_forbids_editing_utm(admin) ->
     async with factory() as session:
         link = await session.get(AttributionLink, 1)
         assert link is not None and link.utm_campaign == "summer_offer"
+
+
+async def test_authenticated_csv_download_keeps_session_open(admin) -> None:
+    client, factory = admin
+    await authenticate(client, factory)
+    csv = await client.get("/admin/attribution/exports/touches.csv?start=&end=&include_test=1")
+    assert csv.status_code == 200
+    assert csv.headers["Content-Disposition"] == 'attachment; filename="touches.csv"'
+    assert csv.content.startswith(b"\xef\xbb\xbftouch_id,created_at,tg_id")
