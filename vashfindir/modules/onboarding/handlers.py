@@ -2,8 +2,7 @@ import logging
 
 from aiogram import Router
 from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
-from aiogram.filters import CommandStart
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import CallbackQuery, InlineKeyboardButton, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from vashfindir.domain.subscription import SubscriptionStatus
@@ -15,17 +14,17 @@ router = Router(name="onboarding")
 logger = logging.getLogger(__name__)
 
 
-@router.message(CommandStart())
 async def on_start(
     message: Message,
     session: AsyncSession,
     use_case: OnboardingUseCase,
+    *,
+    catalogue_button: InlineKeyboardButton | None = None,
 ) -> None:
     if message.from_user is None:
         return
 
     user = message.from_user
-    logger.info("User %s (%s) started bot", user.id, user.username)
 
     context = OnboardingContext(
         tg_id=user.id,
@@ -34,7 +33,10 @@ async def on_start(
     )
     result = await use_case.execute(session, context)
 
-    await message.answer(result.text, reply_markup=onboarding_kb(result))
+    keyboard = onboarding_kb(result)
+    if catalogue_button is not None:
+        keyboard.inline_keyboard.append([catalogue_button])
+    await message.answer(result.text, reply_markup=keyboard)
     if result.status == SubscriptionStatus.SUBSCRIBED:
         logger.info("Lead magnet access granted to user %s", user.id)
 

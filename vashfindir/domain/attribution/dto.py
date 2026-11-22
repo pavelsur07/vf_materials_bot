@@ -1,5 +1,5 @@
 import re
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Annotated, Literal
 
@@ -86,3 +86,33 @@ class LinkInput(LinkChanges):
 
 
 TelegramID = Annotated[StrictInt, Field(gt=0, le=2**63 - 1)]
+
+
+class StartRequest(BaseModel):
+    tg_id: int
+    first_name: str
+    last_name: str | None = None
+    username: str | None = None
+    payload: str | None = None
+
+
+class MagnetContent(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    prefix: str
+    name: str
+    content_type: ContentType
+    file_ref: str | None
+    url: str | None
+    message: str
+
+
+class StartResult(BaseModel):
+    touch_id: int
+    code_status: str
+    raw_payload: str | None
+    created_at: datetime
+    magnet_source: str | None
+    magnet: MagnetContent | None
+    duplicate: bool = False

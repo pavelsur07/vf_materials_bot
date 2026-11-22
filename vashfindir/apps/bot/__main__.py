@@ -15,6 +15,8 @@ from vashfindir.core.config import Settings, get_settings
 from vashfindir.core.glitchtip import init_glitchtip
 from vashfindir.db.session import create_session_factory
 from vashfindir.integrations.telegram import TelegramChannelAdapter
+from vashfindir.integrations.telegram_delivery import TelegramDelivery
+from vashfindir.modules.attribution.use_cases import AttributionUseCase
 from vashfindir.modules.onboarding.use_cases import OnboardingUseCase
 
 logger = logging.getLogger(__name__)
@@ -25,7 +27,9 @@ def build_dispatcher(bot: Bot, settings: Settings) -> Dispatcher:
     telegram_adapter = TelegramChannelAdapter(bot)
     onboarding_use_case = OnboardingUseCase(settings, telegram_adapter)
     dp.update.middleware(DbSessionMiddleware(create_session_factory()))
-    dp.update.middleware(DiMiddleware(onboarding_use_case))
+    delivery = TelegramDelivery(bot, settings.attribution_magnet_dir)
+    attribution = AttributionUseCase(settings, telegram_adapter, delivery)
+    dp.update.middleware(DiMiddleware(onboarding_use_case, attribution))
     for router in get_routers():
         dp.include_router(router)
     return dp
