@@ -2,7 +2,7 @@ import re
 from datetime import datetime, timedelta
 from hashlib import sha256
 
-from sqlalchemy import select, update
+from sqlalchemy import case, select, update
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -145,9 +145,15 @@ async def finish_delivery(
     blocked: bool = False,
 ) -> None:
     async with session.begin():
-        values = {"delivery_finished": True}
+        values: dict[str, object] = {"delivery_finished": True}
         if delivered:
-            values["magnet_delivered"] = True
+            requeue = Touch.magnet_delivered.is_(False) & (Touch.bitrix_status == "ok")
+            values.update(
+                magnet_delivered=True,
+                bitrix_status=case((requeue, "pending"), else_=Touch.bitrix_status),
+                bitrix_attempts=case((requeue, 0), else_=Touch.bitrix_attempts),
+                bitrix_next_attempt_at=case((requeue, None), else_=Touch.bitrix_next_attempt_at),
+            )
         await session.execute(
             update(Touch).where(Touch.id == touch_id, Touch.tg_id == tg_id).values(**values)
         )

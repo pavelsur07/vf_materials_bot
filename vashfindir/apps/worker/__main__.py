@@ -2,8 +2,10 @@ import asyncio
 import contextlib
 import logging
 import signal
+from collections.abc import Awaitable, Callable
 
 from aiohttp import ClientSession
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from vashfindir.apps.worker.handlers import (
     DAILY_STATS,
@@ -16,8 +18,11 @@ from vashfindir.apps.worker.handlers import (
 from vashfindir.core.config import Settings, get_settings
 from vashfindir.core.glitchtip import init_glitchtip
 from vashfindir.db.session import create_session_factory
+from vashfindir.domain.attribution.bitrix_queue import BITRIX_JOB
 from vashfindir.domain.jobs import claim_due_job, complete_job, ensure_scheduled, fail_job
+from vashfindir.integrations.bitrix24 import BitrixClient
 from vashfindir.integrations.image_generator_factory import create_image_generator
+from vashfindir.modules.attribution.bitrix_sync import BitrixSync, enqueue_bitrix_work
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +32,7 @@ POLL_INTERVAL_SECONDS = 5.0
 async def run_loop(
     stop: asyncio.Event,
     handlers: dict[str, Handler] | None = None,
+    reconcile: Callable[[AsyncSession], Awaitable[None]] | None = None,
 ) -> None:
     session_factory = create_session_factory()
     handler_map = handlers or HANDLERS
@@ -36,7 +42,16 @@ async def run_loop(
         async with session.begin():
             await ensure_scheduled(session, DAILY_STATS, DAILY_STATS_INTERVAL)
 
+    loop = asyncio.get_running_loop()
+    next_reconcile = 0.0
     while not stop.is_set():
+        if reconcile is not None and loop.time() >= next_reconcile:
+            next_reconcile = loop.time() + POLL_INTERVAL_SECONDS
+            try:
+                async with session_factory() as session:
+                    await reconcile(session)
+            except Exception:
+                logger.exception("Could not reconcile attribution jobs")
         async with session_factory() as session:
             job = await claim_due_job(session)
         if job is None:
@@ -67,7 +82,17 @@ async def _run(settings: Settings) -> None:
     asyncio.get_running_loop().add_signal_handler(signal.SIGTERM, stop.set)
     async with ClientSession() as http_session:
         image_generator = create_image_generator(settings, http_session)
-        await run_loop(stop, build_handlers(image_generator))
+        handlers = build_handlers(image_generator)
+        reconcile = None
+        if settings.attribution_enabled:
+            bitrix_sync = BitrixSync(BitrixClient(http_session), settings.attribution_secret_key)
+            handlers[BITRIX_JOB] = bitrix_sync.handle_job
+
+            async def reconcile_attribution(session: AsyncSession) -> None:
+                await enqueue_bitrix_work(session, settings.attribution_secret_key)
+
+            reconcile = reconcile_attribution
+        await run_loop(stop, handlers, reconcile)
 
 
 def main() -> None:
